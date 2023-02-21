@@ -9,6 +9,7 @@ import App from './App';
 
 import configureStore from './store';
 
+import { restoreCSRF, csrfFetch } from './store/csrf';
 const store = configureStore();
 
 if (process.env.NODE_ENV !== 'production') {
@@ -31,3 +32,14 @@ ReactDOM.render(
   </React.StrictMode>,
   document.getElementById('root'),
 );
+
+
+
+// ... const store = configureStore();
+
+if (process.env.NODE_ENV !== 'production') {
+  restoreCSRF();
+
+  window.csrfFetch = csrfFetch;
+  window.store = store;
+}
