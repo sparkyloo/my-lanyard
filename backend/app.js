@@ -7,7 +7,8 @@ const helmet = require('helmet');
 const cookieParser = require('cookie-parser');
 
 const { environment } = require('./config');
-const isProduction = environment === 'production';const app = express();
+const isProduction = environment === 'production';
+const app = express();
 
 app.use(morgan('dev'));
 

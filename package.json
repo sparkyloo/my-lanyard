@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "install": "npm --prefix backend install && npm --prefix frontend install",
+    "build": "npm --prefix backend run build && npm --prefix frontend run build",
+    "start": "npm --prefix backend start"
   },
   "repository": {
     "type": "git",
@@ -16,9 +18,5 @@
   "bugs": {
     "url": "https://github.com/sparkyloo/my-lanyard/issues"
   },
-  "homepage": "https://github.com/sparkyloo/my-lanyard#readme",
-  "workspaces": [
-    "backend",
-    "frontend"
-  ]
+  "homepage": "https://github.com/sparkyloo/my-lanyard#readme"
 }
