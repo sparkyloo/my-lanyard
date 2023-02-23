@@ -1,7 +1,5 @@
-'use strict';
-const {
-  Model
-} = require('sequelize');
+"use strict";
+const { Model } = require("sequelize");
 module.exports = (sequelize, DataTypes) => {
   class Lanyard extends Model {
     /**
@@ -9,16 +7,26 @@ module.exports = (sequelize, DataTypes) => {
      * This method is not a part of Sequelize lifecycle.
      * The `models/index` file will call this method automatically.
      */
-    static associate(models) {
-      // define association here
+    static associate({ User, Card }) {
+      Lanyard.belongsTo(User, {
+        foreignKey: "author_id",
+      });
+
+      Lanyard.hasMany(Card, {
+        foreignKey: "lanyard_id",
+      });
     }
   }
-  Lanyard.init({
-    name: DataTypes.STRING,
-    description: DataTypes.STRING
-  }, {
-    sequelize,
-    modelName: 'Lanyard',
-  });
+  Lanyard.init(
+    {
+      name: DataTypes.STRING,
+      description: DataTypes.STRING,
+    },
+    {
+      sequelize,
+      modelName: "Lanyard",
+      tableName: "lanyards",
+    }
+  );
   return Lanyard;
 };
