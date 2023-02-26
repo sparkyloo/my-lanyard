@@ -1,5 +1,7 @@
 "use strict";
+
 const { Model } = require("sequelize");
+
 module.exports = (sequelize, DataTypes) => {
   class Tag extends Model {
     /**
@@ -7,13 +9,30 @@ module.exports = (sequelize, DataTypes) => {
      * This method is not a part of Sequelize lifecycle.
      * The `models/index` file will call this method automatically.
      */
-    static associate({ User }) {
-      //
+    static associate({ User, Tagging }) {
+      Tag.User = Tag.belongsTo(User, {
+        foreignKey: {
+          name: "authorId",
+          allowNull: false,
+          onDelete: "CASCADE",
+        },
+      });
+
+      Tag.Tagging = Tag.hasMany(Tagging, {
+        foreignKey: {
+          name: "tagId",
+          allowNull: false,
+          onDelete: "CASCADE",
+        },
+      });
     }
   }
   Tag.init(
     {
-      name: DataTypes.STRING,
+      name: {
+        type: DataTypes.STRING,
+        allowNull: false,
+      },
     },
     {
       sequelize,

@@ -1,5 +1,7 @@
 "use strict";
+
 const { Model } = require("sequelize");
+
 module.exports = (sequelize, DataTypes) => {
   class Icon extends Model {
     /**
@@ -7,20 +9,41 @@ module.exports = (sequelize, DataTypes) => {
      * This method is not a part of Sequelize lifecycle.
      * The `models/index` file will call this method automatically.
      */
-    static associate({ User, Card }) {
-      Icon.belongsTo(User, {
-        foreignKey: "author_id",
+    static associate({ User, Card, Tagging }) {
+      Icon.User = Icon.belongsTo(User, {
+        foreignKey: {
+          name: "authorId",
+          allowNull: false,
+          onDelete: "CASCADE",
+        },
       });
 
-      Icon.hasMany(Card, {
-        foreignKey: "icon_id",
+      Icon.Card = Icon.hasMany(Card, {
+        foreignKey: {
+          name: "iconId",
+          allowNull: false,
+          onDelete: "CASCADE",
+        },
+      });
+
+      Icon.Tagging = Icon.hasMany(Tagging, {
+        foreignKey: {
+          name: "iconId",
+          onDelete: "CASCADE",
+        },
       });
     }
   }
   Icon.init(
     {
-      name: DataTypes.STRING,
-      image_url: DataTypes.STRING,
+      name: {
+        type: DataTypes.STRING,
+        allowNull: false,
+      },
+      imageUrl: {
+        type: DataTypes.STRING,
+        allowNull: false,
+      },
     },
     {
       sequelize,

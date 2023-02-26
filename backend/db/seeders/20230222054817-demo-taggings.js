@@ -1,8 +1,10 @@
-'use strict';
+"use strict";
+
+const { Tagging } = require("../models");
 
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
-  async up (queryInterface, Sequelize) {
+  async up() {
     /**
      * Add seed commands here.
      *
@@ -11,15 +13,20 @@ module.exports = {
      *   name: 'John Doe',
      *   isBetaMember: false
      * }], {});
-    */
+     */
   },
 
-  async down (queryInterface, Sequelize) {
+  async down() {
     /**
      * Add commands to revert seed here.
      *
      * Example:
      * await queryInterface.bulkDelete('People', null, {});
      */
-  }
+
+    Tagging.destroy({
+      truncate: true,
+      cascade: true,
+    });
+  },
 };
