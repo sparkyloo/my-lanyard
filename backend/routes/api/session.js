@@ -1,7 +1,7 @@
 const express = require("express");
 const { check } = require("express-validator");
 const { User } = require("../../db/models");
-const { handleValidationErrors } = require("../../utils/validation");
+const { validateRequest, finishBadRequest } = require("../../utils/validation");
 const {
   setTokenCookie,
   deleteTokenCookie,
