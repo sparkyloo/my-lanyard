@@ -1,6 +1,7 @@
 const express = require("express");
 const { check } = require("express-validator");
 const { Icon } = require("../../db/models");
+const { createTaggingRouter } = require("../../utils/tagging");
 const {
   validateRequest,
   finishBadRequest,
@@ -10,6 +11,8 @@ const {
 const router = express.Router();
 
 // router.use(requireAuth)
+
+router.use("tagging", createTaggingRouter("cardId"));
 
 async function maybeGetIcon(req, res) {
   try {
