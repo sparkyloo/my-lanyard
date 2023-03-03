@@ -9,6 +9,8 @@ async function validateRequest(req, validators) {
   if (!errors.isEmpty()) {
     throw errors.array();
   }
+
+  return req.body;
 }
 
 function finishBadRequest(res, errors) {
