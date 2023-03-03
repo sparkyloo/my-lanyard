@@ -47,7 +47,7 @@ const checkIconNameExists = check("name")
 
 const checkIconImageUrlExists = check("imageUrl")
   .exists({ checkFalsy: true })
-  .withMessage("Icon image must have a imageURL");
+  .withMessage("Icon must have a imageURL");
 
 const checkIconImageUrlIsUrl = check("imageUrl")
   .isURL()
