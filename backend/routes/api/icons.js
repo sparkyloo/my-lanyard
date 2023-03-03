@@ -58,14 +58,19 @@ const checkIconImageUrlIsUrl = check("imageUrl")
  */
 router.post("/", async (req, res) => {
   try {
-    await validateRequest(req, [
+    const { name, imageUrl } = await validateRequest(req, [
       checkIconNameExists,
       checkIconImageUrlExists,
       checkIconImageUrlIsUrl,
     ]);
 
-    res.status(500);
-    res.end("unimplemented");
+    const icon = await Icon.create({
+      name,
+      imageUrl,
+    });
+
+    res.status(201);
+    res.json(icon);
   } catch (caught) {
     finishBadRequest(res, caught);
   }
