@@ -18,7 +18,7 @@ async function maybeGetTag(req, res) {
     if (instance) {
       return instance;
     } else {
-      finishNotFound("Tag");
+      finishNotFound(res, "Tag");
     }
   } catch (caught) {
     finishBadRequest(res, caught);
@@ -41,37 +41,62 @@ function getTagValues({ body }) {
  * create
  */
 router.post("/", async (req, res) => {
-  res.status(500);
-  res.end("unimplemented");
+  try {
+    await requireAuth(req, res);
+    res.status(500);
+    res.end("unimplemented");
+  } catch (caught) {
+    finishBadRequest(res, caught);
+  }
 });
 
 /**
  * read
  */
 router.get("/", async (req, res) => {
-  res.status(500);
-  res.end("unimplemented");
+  try {
+    await requireAuth(req, res);
+    res.status(500);
+    res.end("unimplemented");
+  } catch (caught) {
+    finishBadRequest(res, caught);
+  }
 });
 
 router.get("/:id", async (req, res) => {
-  res.status(500);
-  res.end("unimplemented");
+  try {
+    await requireAuth(req, res);
+    res.status(500);
+    res.end("unimplemented");
+  } catch (caught) {
+    finishBadRequest(res, caught);
+  }
 });
 
 /**
  * update
  */
 router.patch("/:id", async (req, res) => {
-  res.status(500);
-  res.end("unimplemented");
+  try {
+    await requireAuth(req, res);
+    res.status(500);
+    res.end("unimplemented");
+  } catch (caught) {
+    finishBadRequest(res, caught);
+  }
 });
 
 /**
  * delete
  */
 router.delete("/:id", async (req, res) => {
-  res.status(500);
-  res.end("unimplemented");
+  try {
+    await requireAuth(req, res);
+    res.status(500);
+    res.end("unimplemented");
+  } catch (caught) {
+    finishBadRequest(res, caught);
+  }
 });
 
 module.exports = router;

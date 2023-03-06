@@ -1,18 +1,19 @@
 const express = require("express");
 const { check } = require("express-validator");
 const { User } = require("../../db/models");
-const { handleValidationErrors } = require("../../utils/validation");
 const {
   setTokenCookie,
   deleteTokenCookie,
   restoreUser,
 } = require("../../utils/auth");
+const { notRecognized } = require("../../utils/errors");
+const { finishBadRequest } = require("../../utils/validation");
 
 const router = express.Router();
 
 // Restore session user
-router.get("/", restoreUser, (req, res) => {
-  const { user } = req;
+router.get("/", async (req, res) => {
+  const user = await restoreUser(req, res);
 
   if (user) {
     const token = setTokenCookie(res, user);
@@ -51,11 +52,7 @@ router.post("/", async (req, res, next) => {
     const user = await User.login({ credential, password });
 
     if (!user) {
-      res.status(401);
-      return res.json({
-        message: "Invalid credentials",
-        statusCode: 401,
-      });
+      throw notRecognized();
     }
 
     const token = setTokenCookie(res, user);

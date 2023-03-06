@@ -1,32 +1,29 @@
 const express = require("express");
 const { check } = require("express-validator");
 const { Icon } = require("../../db/models");
+const { requireAuth } = require("../../utils/auth");
 const { createTaggingRouter } = require("../../utils/tagging");
+const { notFound } = require("../../utils/errors");
 const {
   validateRequest,
   finishBadRequest,
-  finishNotFound,
+  finishPostRequest,
+  finishGetRequest,
+  finishPatchRequest,
+  finishDeleteRequest,
 } = require("../../utils/validation");
 
 const router = express.Router();
 
-// router.use(requireAuth)
-
 router.use("tagging", createTaggingRouter("cardId"));
 
-async function maybeGetIcon(req, res) {
-  try {
-    const instance = await Icon.findByPk(req.params.id);
+async function maybeGetIcon(req) {
+  const instance = await Icon.findByPk(req.params.id);
 
-    if (instance) {
-      return instance;
-    } else {
-      finishNotFound("Icon");
-    }
-  } catch (caught) {
-    finishBadRequest(res, caught);
-  } finally {
-    return null;
+  if (instance) {
+    return instance;
+  } else {
+    throw notFound("Icon");
   }
 }
 
@@ -61,19 +58,21 @@ const checkIconImageUrlIsUrl = check("imageUrl")
  */
 router.post("/", async (req, res) => {
   try {
+    await requireAuth(req, res);
+
     const { name, imageUrl } = await validateRequest(req, [
       checkIconNameExists,
       checkIconImageUrlExists,
       checkIconImageUrlIsUrl,
     ]);
 
-    const icon = await Icon.create({
-      name,
-      imageUrl,
-    });
-
-    res.status(201);
-    res.json(icon);
+    finishPostRequest(
+      res,
+      await Icon.create({
+        name,
+        imageUrl,
+      })
+    );
   } catch (caught) {
     finishBadRequest(res, caught);
   }
@@ -84,10 +83,7 @@ router.post("/", async (req, res) => {
  */
 router.get("/", async (req, res) => {
   try {
-    const icons = await Icon.findAll();
-
-    res.status(200);
-    res.json(icons);
+    finishGetRequest(res, await Icon.findAll());
   } catch (caught) {
     finishBadRequest(caught, res);
   }
@@ -95,12 +91,7 @@ router.get("/", async (req, res) => {
 
 router.get("/:id", async (req, res) => {
   try {
-    const icon = await maybeGetIcon(req, res);
-
-    if (icon) {
-      res.status(200);
-      res.json(icon);
-    }
+    finishGetRequest(res, await maybeGetIcon(req));
   } catch (caught) {
     finishBadRequest(caught, res);
   }
@@ -110,13 +101,15 @@ router.get("/:id", async (req, res) => {
  * update
  */
 router.patch("/:id", [iconValidators.imageUrl.isUrl], async (req, res) => {
-  const icon = await maybeGetIcon(req, res);
+  try {
+    await validateRequest(req, [checkIconImageUrlIsUrl]);
 
-  if (icon) {
+    const icon = await maybeGetIcon(req);
     await icon.update(getIconValues(req));
 
-    res.status(200);
-    res.json(icon);
+    finishPatchRequest(res, icon);
+  } catch (caught) {
+    finishBadRequest(caught);
   }
 });
 
@@ -124,16 +117,13 @@ router.patch("/:id", [iconValidators.imageUrl.isUrl], async (req, res) => {
  * delete
  */
 router.delete("/:id", async (req, res) => {
-  const icon = await maybeGetIcon(req, res);
-
-  if (icon) {
+  try {
+    const icon = await maybeGetIcon(req);
     await icon.destroy();
 
-    res.status(204);
-    res.end();
-  } else {
-    res.status(404);
-    res.end();
+    finishDeleteRequest(res);
+  } catch (caught) {
+    finishBadRequest(caught);
   }
 });
 

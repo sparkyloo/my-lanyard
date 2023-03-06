@@ -40,24 +40,6 @@ router.post("/", async (req, res) => {
       token,
     });
   } catch (caught) {
-    if (caught.name === "SequelizeUniqueConstraintError") {
-      for (const err of caught.errors) {
-        if (err.message === "email must be unique") {
-          res.status(403);
-          res.json({
-            message: "User already exists",
-            statusCode: 403,
-            errors: {
-              email: "User with that email already exists",
-            },
-          });
-
-          return;
-        }
-      }
-    }
-
-    // handles everything except the user already exists error ^^^
     finishBadRequest(res, caught);
   }
 });
