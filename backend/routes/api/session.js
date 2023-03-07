@@ -7,7 +7,7 @@ const {
   restoreUser,
 } = require("../../utils/auth");
 const { notRecognized } = require("../../utils/errors");
-const { finishBadRequest } = require("../../utils/validation");
+const { validateRequest, finishBadRequest } = require("../../utils/validation");
 
 const router = express.Router();
 

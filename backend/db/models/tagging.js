@@ -11,6 +11,7 @@ module.exports = (sequelize, DataTypes) => {
      */
     static associate({ User, Card, Icon, Lanyard, Tag }) {
       Tagging.User = Tagging.belongsTo(User, {
+        as: "author",
         foreignKey: {
           name: "authorId",
           allowNull: false,
@@ -19,6 +20,7 @@ module.exports = (sequelize, DataTypes) => {
       });
 
       Tagging.Tag = Tagging.belongsTo(Tag, {
+        as: "tag",
         foreignKey: {
           name: "tagId",
           allowNull: false,
@@ -27,6 +29,7 @@ module.exports = (sequelize, DataTypes) => {
       });
 
       Tagging.Card = Tagging.belongsTo(Card, {
+        as: "card",
         foreignKey: {
           name: "cardId",
           onDelete: "CASCADE",
@@ -34,6 +37,7 @@ module.exports = (sequelize, DataTypes) => {
       });
 
       Tagging.Icon = Tagging.belongsTo(Icon, {
+        as: "icon",
         foreignKey: {
           name: "iconId",
           onDelete: "CASCADE",
@@ -41,6 +45,7 @@ module.exports = (sequelize, DataTypes) => {
       });
 
       Tagging.Lanyard = Tagging.belongsTo(Lanyard, {
+        as: "lanyard",
         foreignKey: {
           name: "lanyardId",
           onDelete: "CASCADE",

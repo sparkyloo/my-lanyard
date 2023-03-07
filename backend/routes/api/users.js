@@ -7,6 +7,16 @@ const { validateRequest, finishBadRequest } = require("../../utils/validation");
 
 const router = express.Router();
 
+const checkSignupFirstName = check("firstName")
+  .exists({ checkFalsy: true })
+  .isString()
+  .withMessage("Please provide a valid first name.");
+
+const checkSignupLastName = check("lastName")
+  .exists({ checkFalsy: true })
+  .isString()
+  .withMessage("Please provide a valid last name.");
+
 const checkSignupEmail = check("email")
   .exists({ checkFalsy: true })
   .isEmail()
@@ -19,14 +29,20 @@ const checkSignupPassword = check("password")
 
 router.post("/", async (req, res) => {
   try {
-    const { firstName, lastName, email, password, username } =
-      await validateRequest(req, [checkSignupEmail, checkSignupPassword]);
+    const { firstName, lastName, email, password } = await validateRequest(
+      req,
+      [
+        checkSignupFirstName,
+        checkSignupLastName,
+        checkSignupEmail,
+        checkSignupPassword,
+      ]
+    );
 
     const user = await User.signup({
       firstName,
       lastName,
       email,
-      username,
       password,
     });
 

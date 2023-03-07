@@ -9,8 +9,9 @@ module.exports = (sequelize, DataTypes) => {
      * This method is not a part of Sequelize lifecycle.
      * The `models/index` file will call this method automatically.
      */
-    static associate({ User, Card, Tagging }) {
+    static associate({ User, Card, Tagging, Tag }) {
       Lanyard.User = Lanyard.belongsTo(User, {
+        as: "author",
         foreignKey: {
           name: "authorId",
           allowNull: false,
@@ -19,6 +20,7 @@ module.exports = (sequelize, DataTypes) => {
       });
 
       Lanyard.Card = Lanyard.hasMany(Card, {
+        as: "cards",
         foreignKey: {
           name: "lanyardId",
           onDelete: "CASCADE",
@@ -26,6 +28,7 @@ module.exports = (sequelize, DataTypes) => {
       });
 
       Lanyard.Tagging = Lanyard.hasMany(Tagging, {
+        as: "taggings",
         foreignKey: {
           name: "lanyardId",
           onDelete: "CASCADE",

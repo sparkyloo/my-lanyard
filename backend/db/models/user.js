@@ -30,12 +30,11 @@ module.exports = (sequelize, DataTypes) => {
       }
     }
 
-    static async signup({ firstName, lastName, username, email, password }) {
+    static async signup({ firstName, lastName, email, password }) {
       const passwordHash = bcrypt.hashSync(password);
       const user = await User.create({
         firstName,
         lastName,
-        username,
         email,
         passwordHash,
       });
@@ -50,6 +49,7 @@ module.exports = (sequelize, DataTypes) => {
      */
     static associate({ Lanyard, Card, Tag, Icon, Tagging }) {
       User.Lanyard = User.hasMany(Lanyard, {
+        as: "lanyards",
         foreignKey: {
           name: "authorId",
           allowNull: false,
@@ -58,6 +58,7 @@ module.exports = (sequelize, DataTypes) => {
       });
 
       User.Card = User.hasMany(Card, {
+        as: "cards",
         foreignKey: {
           name: "authorId",
           allowNull: false,
@@ -66,6 +67,7 @@ module.exports = (sequelize, DataTypes) => {
       });
 
       User.Icon = User.hasMany(Icon, {
+        as: "icons",
         foreignKey: {
           name: "authorId",
           allowNull: false,
@@ -74,6 +76,7 @@ module.exports = (sequelize, DataTypes) => {
       });
 
       User.Tag = User.hasMany(Tag, {
+        as: "tags",
         foreignKey: {
           name: "authorId",
           allowNull: false,
@@ -82,6 +85,7 @@ module.exports = (sequelize, DataTypes) => {
       });
 
       User.Tagging = User.hasMany(Tagging, {
+        as: "taggings",
         foreignKey: {
           name: "authorId",
           allowNull: false,
