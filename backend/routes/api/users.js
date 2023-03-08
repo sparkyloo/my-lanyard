@@ -7,6 +7,16 @@ const { validateRequest, finishBadRequest } = require("../../utils/validation");
 
 const router = express.Router();
 
+const checkSignupFirstName = check("firstName")
+  .exists({ checkFalsy: true })
+  .isString()
+  .withMessage("Please provide a valid first name.");
+
+const checkSignupLastName = check("lastName")
+  .exists({ checkFalsy: true })
+  .isString()
+  .withMessage("Please provide a valid last name.");
+
 const checkSignupEmail = check("email")
   .exists({ checkFalsy: true })
   .isEmail()
@@ -19,14 +29,20 @@ const checkSignupPassword = check("password")
 
 router.post("/", async (req, res) => {
   try {
-    const { firstName, lastName, email, password, username } =
-      await validateRequest(req, [checkSignupEmail, checkSignupPassword]);
+    const { firstName, lastName, email, password } = await validateRequest(
+      req,
+      [
+        checkSignupFirstName,
+        checkSignupLastName,
+        checkSignupEmail,
+        checkSignupPassword,
+      ]
+    );
 
     const user = await User.signup({
       firstName,
       lastName,
       email,
-      username,
       password,
     });
 
@@ -40,24 +56,6 @@ router.post("/", async (req, res) => {
       token,
     });
   } catch (caught) {
-    if (caught.name === "SequelizeUniqueConstraintError") {
-      for (const err of caught.errors) {
-        if (err.message === "email must be unique") {
-          res.status(403);
-          res.json({
-            message: "User already exists",
-            statusCode: 403,
-            errors: {
-              email: "User with that email already exists",
-            },
-          });
-
-          return;
-        }
-      }
-    }
-
-    // handles everything except the user already exists error ^^^
     finishBadRequest(res, caught);
   }
 });

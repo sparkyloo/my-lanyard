@@ -1,32 +1,33 @@
 const express = require("express");
+const { check } = require("express-validator");
 const { Lanyard } = require("../../db/models");
 const { requireAuth } = require("../../utils/auth");
-const { createTaggingRouter } = require("../../utils/tagging");
+const { addTaggingRoutes } = require("../../utils/tagging");
+const { notAllowed, notFound } = require("../../utils/errors");
 const {
   validateRequest,
   finishBadRequest,
-  finishNotFound,
+  finishPostRequest,
+  finishGetRequest,
+  finishPatchRequest,
+  finishDeleteRequest,
 } = require("../../utils/validation");
 
 const router = express.Router();
 
-// router.use(requireAuth)
+addTaggingRoutes(router, "lanyardId", maybeGetLanyard);
 
-router.use("tagging", createTaggingRouter("cardId"));
+async function maybeGetLanyard(req, authorId, options = {}) {
+  const instance = await Lanyard.findByPk(req.params.id, options);
 
-async function maybeGetLanyard(req, res) {
-  try {
-    const instance = await Lanyard.findByPk(req.params.id);
-
-    if (instance) {
-      return instance;
-    } else {
-      finishNotFound("Lanyard");
+  if (instance) {
+    if (typeof authorId !== "undefined" && authorId !== instance.authorId) {
+      throw notAllowed();
     }
-  } catch (caught) {
-    finishBadRequest(res, caught);
-  } finally {
-    return null;
+
+    return instance;
+  } else {
+    throw notFound("Lanyard");
   }
 }
 
@@ -56,37 +57,91 @@ const checkLanyardDescriptionExists = check("description")
  * create
  */
 router.post("/", async (req, res) => {
-  res.status(500);
-  res.end("unimplemented");
+  try {
+    const user = await requireAuth(req, res);
+
+    const { name, description } = await validateRequest(req, [
+      checkLanyardNameExists,
+      checkLanyardDescriptionExists,
+    ]);
+
+    finishPostRequest(
+      res,
+      await Lanyard.create({
+        name,
+        description,
+        authorId: user.id,
+      })
+    );
+  } catch (caught) {
+    finishBadRequest(res, caught);
+  }
 });
 
 /**
  * read
  */
 router.get("/", async (req, res) => {
-  res.status(500);
-  res.end("unimplemented");
+  try {
+    const user = await requireAuth(req, res);
+
+    finishGetRequest(
+      res,
+      await Lanyard.findAll({
+        where: {
+          authorId: user.id,
+        },
+      })
+    );
+  } catch (caught) {
+    finishBadRequest(res, caught);
+  }
 });
 
-router.get("/:id", async (req, res) => {
-  res.status(500);
-  res.end("unimplemented");
+router.get("/instance/:id", async (req, res) => {
+  try {
+    const user = await requireAuth(req, res);
+
+    const instance = await maybeGetLanyard(req, user.id);
+
+    finishGetRequest(res, instance);
+  } catch (caught) {
+    finishBadRequest(res, caught);
+  }
 });
 
 /**
  * update
  */
-router.patch("/:id", async (req, res) => {
-  res.status(500);
-  res.end("unimplemented");
+router.patch("/instance/:id", async (req, res) => {
+  try {
+    const user = await requireAuth(req, res);
+
+    const instance = await maybeGetLanyard(req, user.id);
+
+    await instance.update(getLanyardValues(req));
+
+    finishPatchRequest(res, instance);
+  } catch (caught) {
+    finishBadRequest(caught);
+  }
 });
 
 /**
  * delete
  */
-router.delete("/:id", async (req, res) => {
-  res.status(500);
-  res.end("unimplemented");
+router.delete("/instance/:id", async (req, res) => {
+  try {
+    const user = await requireAuth(req, res);
+
+    const instance = await maybeGetLanyard(req, user.id);
+
+    await instance.destroy();
+
+    finishDeleteRequest(res);
+  } catch (caught) {
+    finishBadRequest(caught);
+  }
 });
 
 module.exports = router;

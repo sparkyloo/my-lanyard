@@ -1,32 +1,33 @@
 const express = require("express");
 const { check } = require("express-validator");
 const { Icon } = require("../../db/models");
-const { createTaggingRouter } = require("../../utils/tagging");
+const { requireAuth } = require("../../utils/auth");
+const { addTaggingRoutes } = require("../../utils/tagging");
+const { notAllowed, notFound } = require("../../utils/errors");
 const {
   validateRequest,
   finishBadRequest,
-  finishNotFound,
+  finishPostRequest,
+  finishGetRequest,
+  finishPatchRequest,
+  finishDeleteRequest,
 } = require("../../utils/validation");
 
 const router = express.Router();
 
-// router.use(requireAuth)
+addTaggingRoutes(router, "iconId", maybeGetIcon);
 
-router.use("tagging", createTaggingRouter("cardId"));
+async function maybeGetIcon(req, authorId, options = {}) {
+  const instance = await Icon.findByPk(req.params.id, options);
 
-async function maybeGetIcon(req, res) {
-  try {
-    const instance = await Icon.findByPk(req.params.id);
-
-    if (instance) {
-      return instance;
-    } else {
-      finishNotFound("Icon");
+  if (instance) {
+    if (typeof authorId !== "undefined" && authorId !== instance.authorId) {
+      throw notAllowed();
     }
-  } catch (caught) {
-    finishBadRequest(res, caught);
-  } finally {
-    return null;
+
+    return instance;
+  } else {
+    throw notFound("Icon");
   }
 }
 
@@ -61,19 +62,22 @@ const checkIconImageUrlIsUrl = check("imageUrl")
  */
 router.post("/", async (req, res) => {
   try {
+    const user = await requireAuth(req, res);
+
     const { name, imageUrl } = await validateRequest(req, [
       checkIconNameExists,
       checkIconImageUrlExists,
       checkIconImageUrlIsUrl,
     ]);
 
-    const icon = await Icon.create({
-      name,
-      imageUrl,
-    });
-
-    res.status(201);
-    res.json(icon);
+    finishPostRequest(
+      res,
+      await Icon.create({
+        name,
+        imageUrl,
+        authorId: user.id,
+      })
+    );
   } catch (caught) {
     finishBadRequest(res, caught);
   }
@@ -84,56 +88,66 @@ router.post("/", async (req, res) => {
  */
 router.get("/", async (req, res) => {
   try {
-    const icons = await Icon.findAll();
+    const user = await requireAuth(req, res);
 
-    res.status(200);
-    res.json(icons);
+    finishGetRequest(
+      res,
+      await Icon.findAll({
+        where: {
+          authorId: user.id,
+        },
+      })
+    );
   } catch (caught) {
-    finishBadRequest(caught, res);
+    finishBadRequest(res, caught);
   }
 });
 
-router.get("/:id", async (req, res) => {
+router.get("/instance/:id", async (req, res) => {
   try {
-    const icon = await maybeGetIcon(req, res);
+    const user = await requireAuth(req, res);
 
-    if (icon) {
-      res.status(200);
-      res.json(icon);
-    }
+    const instance = await maybeGetIcon(req, user.id);
+
+    finishGetRequest(res, instance);
   } catch (caught) {
-    finishBadRequest(caught, res);
+    finishBadRequest(res, caught);
   }
 });
 
 /**
  * update
  */
-router.patch("/:id", [iconValidators.imageUrl.isUrl], async (req, res) => {
-  const icon = await maybeGetIcon(req, res);
+router.patch("/instance/:id", async (req, res) => {
+  try {
+    const user = await requireAuth(req, res);
 
-  if (icon) {
-    await icon.update(getIconValues(req));
+    await validateRequest(req, [checkIconImageUrlIsUrl]);
 
-    res.status(200);
-    res.json(icon);
+    const instance = await maybeGetIcon(req, user.id);
+
+    await instance.update(getIconValues(req));
+
+    finishPatchRequest(res, instance);
+  } catch (caught) {
+    finishBadRequest(caught);
   }
 });
 
 /**
  * delete
  */
-router.delete("/:id", async (req, res) => {
-  const icon = await maybeGetIcon(req, res);
+router.delete("/instance/:id", async (req, res) => {
+  try {
+    const user = await requireAuth(req, res);
 
-  if (icon) {
-    await icon.destroy();
+    const instance = await maybeGetIcon(req, user.id);
 
-    res.status(204);
-    res.end();
-  } else {
-    res.status(404);
-    res.end();
+    await instance.destroy();
+
+    finishDeleteRequest(res);
+  } catch (caught) {
+    finishBadRequest(caught);
   }
 });
 

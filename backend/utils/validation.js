@@ -1,4 +1,3 @@
-// backend/utils/validation.js
 const { validationResult } = require("express-validator");
 
 async function validateRequest(req, validators) {
@@ -13,66 +12,107 @@ async function validateRequest(req, validators) {
   return req.body;
 }
 
-function finishBadRequest(res, errors) {
+function finishBadRequest(res, caught) {
   let statusCode = 400;
+  let message = "Request validation failed";
+  let errors = [];
 
-  if (!Array.isArray(errors)) {
-    if (errors instanceof Error) {
-      statusCode = 500;
-      errors = [
-        {
-          reason: errors.message,
-        },
-      ];
-    } else if (typeof errors === "string") {
-      errors = [
-        {
-          reason: errors,
-        },
-      ];
-    }
-  }
+  if (caught && !Array.isArray(caught)) {
+    if (typeof caught === "string") {
+      message = caught;
+    } else if (typeof caught === "object") {
+      switch (caught.name) {
+        case "SequelizeUniqueConstraintError": {
+          for (const err of caught.errors) {
+            if (err.message === "email must be unique") {
+              statusCode = 403;
+              message = "User already exists";
+              errors.push({
+                reason: "User with that email already exists",
+              });
 
-  errors = errors
-    .map((validationError) => {
-      if (typeof validationError === "object" && "msg" in validationError) {
-        return {
-          reason: validationError.msg,
-        };
+              break;
+            }
+          }
+        }
+        default: {
+          statusCode = caught.statusCode || 500;
+
+          if ("message" in caught) {
+            message = caught.message;
+          }
+
+          if ("detail" in caught) {
+            errors.push({
+              reason: caught.detail,
+            });
+          }
+        }
       }
+    }
+  } else {
+    for (const validationError of caught || []) {
+      if (typeof validationError === "object" && "msg" in validationError) {
+        errors.push({
+          reason: validationError.msg,
+        });
+      } else if (typeof validationError === "string") {
+        errors.push({
+          reason: validationError,
+        });
+      }
+    }
 
-      return null;
-    })
-    .filter(Boolean);
-
-  if (!errors || !errors.length) {
-    statusCode = 500;
-
-    errors = [
-      {
-        reason: "An unexplained error occured",
-      },
-    ];
+    if (!errors.length) {
+      statusCode = 500;
+      message = "An unexplained error occured";
+    }
   }
 
   res.status(statusCode);
   res.json({
     statusCode,
-    message: "Request validation failed",
+    message,
     errors,
   });
 }
 
-function finishNotFound(resourceType, res) {
-  res.status(404);
-  res.json({
-    statusCode: 404,
-    message: `${resourceType} was not be found`,
-  });
+function finishPostRequest(res, instance) {
+  res.status(201);
+  res.json(instance);
+}
+
+function finishGetRequest(res, data) {
+  if (data) {
+    res.status(200);
+    res.json(data);
+
+    return true;
+  }
+
+  return false;
+}
+
+function finishPatchRequest(res, instance) {
+  res.status(200);
+  res.json(instance);
+}
+
+function finishPatchRequest(res, instance) {
+  res.status(200);
+  res.json(instance);
+}
+
+function finishDeleteRequest(res) {
+  res.status(204);
+  res.end();
 }
 
 module.exports = {
   validateRequest,
   finishBadRequest,
-  finishNotFound,
+  finishPostRequest,
+  finishGetRequest,
+  finishPatchRequest,
+  finishDeleteRequest,
 };

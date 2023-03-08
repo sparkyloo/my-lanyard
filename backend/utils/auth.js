@@ -1,4 +1,5 @@
 const jwt = require("jsonwebtoken");
+const { notRecognized } = require("./errors");
 const { jwtConfig } = require("../config");
 const { User } = require("../db/models");
 
@@ -31,41 +32,51 @@ function deleteTokenCookie(res) {
   res.clearCookie("token");
 }
 
-function restoreUser(req, res, next) {
+/**
+ * @returns {Promise<User | null>}
+ */
+async function restoreUser(req, res) {
+  if (req.user) {
+    return req.user;
+  }
+
   // token parsed from cookies
   const { token } = req.cookies;
-  req.user = null;
 
-  return jwt.verify(token, secret, null, async (err, jwtPayload) => {
-    if (err) {
-      return next();
-    }
+  if (!token) {
+    return null;
+  }
 
-    try {
-      const { id } = jwtPayload.data;
-      req.user = await User.scope("currentUser").findByPk(id);
-    } catch (e) {
-      res.clearCookie("token");
-      return next();
-    }
+  return new Promise((resolve) => {
+    let user = null;
 
-    if (!req.user) {
-      res.clearCookie("token");
-    }
+    jwt.verify(token, secret, null, async (err, jwtPayload) => {
+      if (!err) {
+        try {
+          const { id } = jwtPayload.data;
 
-    return next();
+          req.user = user = await User.scope("currentUser").findByPk(id);
+
+          if (!user) {
+            res.clearCookie("token");
+          }
+        } catch (caught) {
+          res.clearCookie("token");
+        }
+      }
+
+      resolve(user);
+    });
   });
 }
 
-function requireAuth(req, res, next) {
-  if (req.user) {
-    next();
+async function requireAuth(req, res) {
+  const user = await restoreUser(req, res);
+
+  if (user) {
+    return user;
   } else {
-    res.status(401);
-    res.json({
-      statusCode: 401,
-      message: "Unauthorized",
-    });
+    throw notRecognized();
   }
 }
 

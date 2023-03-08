@@ -9,8 +9,9 @@ module.exports = (sequelize, DataTypes) => {
      * This method is not a part of Sequelize lifecycle.
      * The `models/index` file will call this method automatically.
      */
-    static associate({ User, Tagging }) {
+    static associate({ User, Tagging, Card, Icon, Lanyard }) {
       Tag.User = Tag.belongsTo(User, {
+        as: "author",
         foreignKey: {
           name: "authorId",
           allowNull: false,
@@ -19,6 +20,7 @@ module.exports = (sequelize, DataTypes) => {
       });
 
       Tag.Tagging = Tag.hasMany(Tagging, {
+        as: "taggings",
         foreignKey: {
           name: "tagId",
           allowNull: false,
