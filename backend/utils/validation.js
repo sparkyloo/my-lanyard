@@ -15,7 +15,7 @@ async function validateRequest(req, validators) {
 function finishBadRequest(res, caught) {
   let statusCode = 400;
   let message = "Request validation failed";
-  let errors = [];
+  let reasons = [];
 
   if (caught && !Array.isArray(caught)) {
     if (typeof caught === "string") {
@@ -27,9 +27,6 @@ function finishBadRequest(res, caught) {
             if (err.message === "email must be unique") {
               statusCode = 403;
               message = "User already exists";
-              errors.push({
-                reason: "User with that email already exists",
-              });
 
               break;
             }
@@ -43,9 +40,7 @@ function finishBadRequest(res, caught) {
           }
 
           if ("detail" in caught) {
-            errors.push({
-              reason: caught.detail,
-            });
+            reasons.push(caught.detail);
           }
         }
       }
@@ -53,17 +48,13 @@ function finishBadRequest(res, caught) {
   } else {
     for (const validationError of caught || []) {
       if (typeof validationError === "object" && "msg" in validationError) {
-        errors.push({
-          reason: validationError.msg,
-        });
+        reasons.push(validationError.msg);
       } else if (typeof validationError === "string") {
-        errors.push({
-          reason: validationError,
-        });
+        reasons.push(validationError);
       }
     }
 
-    if (!errors.length) {
+    if (!reasons.length) {
       statusCode = 500;
       message = "An unexplained error occured";
     }
@@ -73,7 +64,7 @@ function finishBadRequest(res, caught) {
   res.json({
     statusCode,
     message,
-    errors,
+    reasons,
   });
 }
 

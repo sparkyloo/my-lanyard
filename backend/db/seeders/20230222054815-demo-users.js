@@ -19,6 +19,7 @@ module.exports = {
      */
 
     const admin = await User.create({
+      id: 1,
       firstName: "System",
       lastName: "Admin",
       email: "system.admin@mylanyard.org",

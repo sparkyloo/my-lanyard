@@ -58,11 +58,7 @@ router.post("/", async (req, res, next) => {
     const token = setTokenCookie(res, user);
 
     return res.json({
-      id: user.id,
-      username: user.username,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
+      ...user.toSafeObject(),
       token,
     });
   } catch (caught) {

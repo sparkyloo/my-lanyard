@@ -2,6 +2,7 @@ const express = require("express");
 
 const router = express.Router();
 
+router.use("/system-assets", require("./system-assets"));
 router.use("/cards", require("./cards"));
 router.use("/icons", require("./icons"));
 router.use("/lanyards", require("./lanyards"));

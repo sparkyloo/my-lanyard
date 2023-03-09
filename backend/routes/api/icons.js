@@ -15,13 +15,17 @@ const {
 
 const router = express.Router();
 
+module.exports = router;
+
+module.exports.maybeGetIcon = maybeGetIcon;
+
 addTaggingRoutes(router, "iconId", maybeGetIcon);
 
 async function maybeGetIcon(req, authorId, options = {}) {
   const instance = await Icon.findByPk(req.params.id, options);
 
   if (instance) {
-    if (typeof authorId !== "undefined" && authorId !== instance.authorId) {
+    if (!!authorId && authorId !== instance.authorId) {
       throw notAllowed();
     }
 
@@ -150,5 +154,3 @@ router.delete("/instance/:id", async (req, res) => {
     finishBadRequest(caught);
   }
 });
-
-module.exports = router;
