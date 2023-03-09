@@ -1,0 +1,21 @@
+.TopBar {
+  display: flex;
+  height: 40px;
+  padding: 0 16px;
+  border-bottom: 1px solid #ccc;
+  align-items: center;
+}
+
+.TopBar--left {
+  display: flex;
+  flex: 1;
+  gap: 10px;
+}
+
+
+.TopBar--right {
+  display: flex;
+  flex: 1;
+  flex-direction: row-reverse;
+  gap: 10px;
+}

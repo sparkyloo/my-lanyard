@@ -14,11 +14,15 @@ const {
 
 const router = express.Router();
 
+module.exports = router;
+
+module.exports.maybeGetTag = maybeGetTag;
+
 async function maybeGetTag(req, authorId, options = {}) {
   const instance = await Tag.findByPk(req.params.id, options);
 
   if (instance) {
-    if (typeof authorId !== "undefined" && authorId !== instance.authorId) {
+    if (!!authorId && authorId !== instance.authorId) {
       throw notAllowed();
     }
 
@@ -129,9 +133,4 @@ router.delete("/instance/:id", async (req, res) => {
   } catch (caught) {
     finishBadRequest(caught);
   }
-});
-
-module.exports = Object.assign(router, {
-  maybeGetTag,
-  getTagValues,
 });

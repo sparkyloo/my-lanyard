@@ -49,10 +49,7 @@ router.post("/", async (req, res) => {
     const token = setTokenCookie(res, user);
 
     res.json({
-      id: user.id,
-      firstName,
-      lastName,
-      email,
+      ...user.toSafeObject(),
       token,
     });
   } catch (caught) {

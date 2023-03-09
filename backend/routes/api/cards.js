@@ -15,13 +15,17 @@ const {
 
 const router = express.Router();
 
+module.exports = router;
+
+module.exports.maybeGetCard = maybeGetCard;
+
 addTaggingRoutes(router, "cardId", maybeGetCard);
 
 async function maybeGetCard(req, authorId, options = {}) {
   const instance = await Card.findByPk(req.params.id, options);
 
   if (instance) {
-    if (typeof authorId !== "undefined" && authorId !== instance.authorId) {
+    if (!!authorId && authorId !== instance.authorId) {
       throw notAllowed();
     }
 
@@ -133,5 +137,3 @@ router.delete("/instance/:id", async (req, res) => {
     finishBadRequest(caught);
   }
 });
-
-module.exports = router;
