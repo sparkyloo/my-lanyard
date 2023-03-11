@@ -1,4 +1,4 @@
-import "./Login.css";
+import "./Signup.css";
 import { Link } from "react-router-dom";
 import { FlexCol } from "../../components/FlexCol";
 import { FlexRow } from "../../components/FlexRow";
@@ -8,7 +8,9 @@ import { Button } from "../../components/Button";
 import { useInput } from "../../hooks/input";
 import { useForm } from "../../hooks/form";
 
-export function LoginPage() {
+export function SignupPage() {
+  const [first] = useInput();
+  const [last] = useInput();
   const [email] = useInput();
   const [password] = useInput();
 
@@ -18,8 +20,20 @@ export function LoginPage() {
 
   return (
     <FlexCol gap={2} minWidth={40} maxWidth={48} margin={{ x: "auto" }}>
-      <H1 text="center">Welcome Back</H1>
+      <H1 text="center">Get Started</H1>
       <FlexCol gap={1}>
+        <Input
+          label="First Name"
+          placeholder="Jane"
+          direction="column"
+          {...first}
+        />
+        <Input
+          label="Last Name"
+          placeholder="Doe"
+          direction="column"
+          {...last}
+        />
         <Input
           type="email"
           label="Email"
@@ -40,8 +54,8 @@ export function LoginPage() {
           Submit
         </Button>
         <FlexRow gap={0.5} fontSize={4} fontWeight={1}>
-          <Span>Need an account?</Span>
-          <Link to="/signup">Click here</Link>
+          <Span>Already have an account?</Span>
+          <Link to="/login">Click here</Link>
         </FlexRow>
       </FlexCol>
     </FlexCol>

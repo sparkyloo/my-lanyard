@@ -1,7 +1,9 @@
 import "./TopBar.css";
 import { useDispatch, useSelector } from "react-redux";
 import { useHistory, useRouteMatch } from "react-router-dom";
+import { prepareStyles } from "../../css/classname";
 import { Button } from "../Button";
+import { Span } from "../Text";
 import { selectSession } from "../../store/selectors";
 
 export function TopBar() {
@@ -11,24 +13,50 @@ export function TopBar() {
   const isLoginOrSignup = useRouteMatch(["/login", "/signup"]);
 
   return (
-    <div className="TopBar">
-      <div className="TopBar--left">
+    <div
+      {...prepareStyles({
+        display: "flex",
+        align: "center",
+        height: 4,
+        padding: {
+          x: 1,
+        },
+        border: {
+          color: "light",
+          bottom: 1,
+        },
+      })}
+    >
+      <div
+        {...prepareStyles({
+          display: "flex",
+          flex: 1,
+          gap: 1,
+        })}
+      >
         {!!session && (
           <>
-            <Button label="Cards" />
-            <Button label="Lanyards" />
+            <Button>Cards</Button>
+            <Button>Lanyards</Button>
           </>
         )}
       </div>
-      <div className="TopBar--right">
+      <div
+        {...prepareStyles({
+          display: "flex",
+          reverse: true,
+          flex: 1,
+          gap: 1,
+        })}
+      >
         {!isLoginOrSignup && (
           <>
             {session ? (
-              <Button label="Menu" />
+              <Button>Menu</Button>
             ) : (
-              <Button label="Login" onClick={() => history.push("/login")} />
+              <Button onClick={() => history.push("/login")}>Login</Button>
             )}
-            {!!session && <span>Hi {session.firstName}</span>}
+            {!!session && <Span>Hi {session.firstName}</Span>}
           </>
         )}
       </div>

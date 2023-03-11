@@ -1,9 +1,10 @@
+import { prepareStyles } from "../../css/classname";
 import "./Button.css";
 
-export function Button({ label, onClick }) {
-  return (
-    <button onClick={onClick} className="Button">
-      {label}
-    </button>
-  );
+export function Button({ ...props }) {
+  if (!props.height) {
+    props.height = 4;
+  }
+
+  return <button {...prepareStyles(props)} />;
 }
