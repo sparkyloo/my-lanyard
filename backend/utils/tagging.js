@@ -1,10 +1,9 @@
-const express = require("express");
-const { check } = require("express-validator");
-const { Card, Icon, Lanyard, Tag, Tagging } = require("../db/models");
+const { Tagging } = require("../db/models");
 const { requireAuth } = require("../utils/auth");
 const { maybeGetTag } = require("../routes/api/tags");
 const { notAllowed, notFound } = require("../utils/errors");
 const {
+  createRequiredCheck,
   validateRequest,
   finishBadRequest,
   finishPostRequest,
@@ -12,13 +11,25 @@ const {
   finishDeleteRequest,
 } = require("../utils/validation");
 
-async function maybeGetTagging(req, authorId) {
-  const instance = await Tagging.findByPk(req.params.id, {
+const includeTaggings = {
+  as: "taggings",
+  model: Tagging,
+  include: "tag",
+};
+
+async function getDataWithTags(req, getter, authorId) {
+  return getter(req, authorId, {
+    include: includeTaggings,
+  });
+}
+
+async function maybeGetTagging(tagId, userId) {
+  const instance = await Tagging.findByPk(tagId, {
     include: ["card", "icon", "lanyard", "tag"],
   });
 
   if (instance) {
-    if (typeof authorId !== "undefined" && authorId !== instance.authorId) {
+    if (!userCanViewItem(userId, instance.authorId)) {
       throw notAllowed();
     }
 
@@ -28,9 +39,10 @@ async function maybeGetTagging(req, authorId) {
   }
 }
 
-const checkTaggingInstanceIdExists = check("instanceId")
-  .exists({ checkFalsy: true })
-  .withMessage("Tagging request must have an instanceId");
+const checkTaggingInstanceIdExists = createRequiredCheck(
+  "Instance ID",
+  (body) => body.instanceId
+);
 
 function addTaggingRoutes(router, foriegnKey, maybeGetInstance) {
   /**
@@ -40,13 +52,13 @@ function addTaggingRoutes(router, foriegnKey, maybeGetInstance) {
     try {
       const user = await requireAuth(req, res);
 
-      const { instanceId } = await validateRequest(req, [
+      const { instanceId } = validateRequest(req, [
         checkTaggingInstanceIdExists,
       ]);
 
       const [tag] = await Promise.all([
-        maybeGetTag(req, user.id),
-        maybeGetInstance({ params: { id: instanceId } }, user.id),
+        maybeGetTag(req.params.id, user.id),
+        maybeGetInstance(instanceId, user.id),
       ]);
 
       finishPostRequest(
@@ -86,7 +98,7 @@ function addTaggingRoutes(router, foriegnKey, maybeGetInstance) {
     try {
       const user = await requireAuth(req, res);
 
-      const instance = await maybeGetTagging(req, user.id);
+      const instance = await maybeGetTagging(req.params.id, user.id);
 
       finishGetRequest(res, instance);
     } catch (caught) {
@@ -98,7 +110,7 @@ function addTaggingRoutes(router, foriegnKey, maybeGetInstance) {
     try {
       const user = await requireAuth(req, res);
 
-      const instance = await maybeGetInstance(req, user.id, {
+      const instance = await maybeGetInstance(req.params.id, user.id, {
         include: {
           as: "taggings",
           model: Tagging,
@@ -119,7 +131,7 @@ function addTaggingRoutes(router, foriegnKey, maybeGetInstance) {
     try {
       const user = await requireAuth(req, res);
 
-      const instance = await maybeGetTagging(req, user.id);
+      const instance = await maybeGetTagging(req.params.id, user.id);
 
       await instance.destroy();
 
@@ -133,5 +145,7 @@ function addTaggingRoutes(router, foriegnKey, maybeGetInstance) {
 }
 
 module.exports = {
+  includeTaggings,
+  getDataWithTags,
   addTaggingRoutes,
 };

@@ -1,9 +1,10 @@
 const express = require("express");
-const { check } = require("express-validator");
 const { Tag } = require("../../db/models");
 const { requireAuth } = require("../../utils/auth");
 const { notAllowed, notFound } = require("../../utils/errors");
+const { userCanViewItem, byUserOrSystem } = require("../../utils/misc");
 const {
+  createRequiredCheck,
   validateRequest,
   finishBadRequest,
   finishPostRequest,
@@ -18,11 +19,11 @@ module.exports = router;
 
 module.exports.maybeGetTag = maybeGetTag;
 
-async function maybeGetTag(req, authorId, options = {}) {
-  const instance = await Tag.findByPk(req.params.id, options);
+async function maybeGetTag(instanceId, userId, options = {}) {
+  const instance = await Tag.findByPk(instanceId, options);
 
   if (instance) {
-    if (!!authorId && authorId !== instance.authorId) {
+    if (!userCanViewItem(userId, instance.authorId)) {
       throw notAllowed();
     }
 
@@ -42,9 +43,7 @@ function getTagValues({ body }) {
   return values;
 }
 
-const checkTagNameExists = check("name")
-  .exists({ checkFalsy: true })
-  .withMessage("Icons must have a name");
+const checkTagNameExists = createRequiredCheck("Name", (body) => body.name);
 
 /**
  * create
@@ -78,7 +77,7 @@ router.get("/", async (req, res) => {
       res,
       await Tag.findAll({
         where: {
-          authorId: user.id,
+          authorId: byUserOrSystem(user.id),
         },
       })
     );
@@ -91,7 +90,7 @@ router.get("/instance/:id", async (req, res) => {
   try {
     const user = await requireAuth(req, res);
 
-    const instance = await maybeGetTag(req, user.id);
+    const instance = await maybeGetTag(req.params.id, user.id);
 
     finishGetRequest(res, instance);
   } catch (caught) {
@@ -108,13 +107,13 @@ router.patch("/instance/:id", async (req, res) => {
 
     await validateRequest(req, [checkTagNameExists]);
 
-    const instance = await maybeGetTag(req, user.id);
+    const instance = await maybeGetTag(req.params.id, user.id);
 
     await instance.update(getTagValues(req));
 
     finishPatchRequest(res, instance);
   } catch (caught) {
-    finishBadRequest(caught);
+    finishBadRequest(res, caught);
   }
 });
 
@@ -125,12 +124,12 @@ router.delete("/instance/:id", async (req, res) => {
   try {
     const user = await requireAuth(req, res);
 
-    const instance = await maybeGetTag(req, user.id);
+    const instance = await maybeGetTag(req.params.id, user.id);
 
     await instance.destroy();
 
     finishDeleteRequest(res);
   } catch (caught) {
-    finishBadRequest(caught);
+    finishBadRequest(res, caught);
   }
 });

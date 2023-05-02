@@ -6,11 +6,9 @@ export function useInput(initialValue) {
     setValue(event.target.value);
   }, []);
 
-  return [
-    {
-      value,
-      onChange,
-    },
+  return {
+    value,
+    onChange,
     setValue,
-  ];
+  };
 }

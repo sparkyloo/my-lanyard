@@ -1,14 +1,22 @@
 export function prepareStyles(props, ...extraClassNames) {
-  const {
+  let {
     className,
+    scroll,
+    bg,
+    grow,
+    shrink,
+    accent,
     display,
+    cursor,
     text,
     position,
     top,
     right,
     bottom,
     left,
+    grid,
     flex,
+    wrap,
     direction,
     reverse,
     align,
@@ -24,20 +32,43 @@ export function prepareStyles(props, ...extraClassNames) {
     maxWidth,
     fontSize,
     fontWeight,
-    margin,
-    padding,
-    border,
+    margin = {},
+    padding = {},
+    border = {},
     outline,
+    round,
+    rounded,
+    invisible,
     ...rest
   } = props;
+
+  if (margin === false) {
+    margin = {};
+  }
+
+  if (padding === false) {
+    padding = {};
+  }
+
+  if (border === false) {
+    border = {};
+  }
+
+  if (round) {
+    border.radius = "full";
+  } else if (rounded) {
+    border.radius = 1;
+  }
 
   return {
     ...rest,
     className: convertToClassNameString([
       className,
-      displayClasses(display, text),
+      backgroundColorClasses(bg, accent),
+      displayClasses(display, text, cursor, invisible, scroll),
       positionClasses(position, top, right, bottom, left),
-      flexClasses(flex, reverse, align, justify, direction),
+      gridClasses(grid),
+      flexClasses(flex, reverse, align, justify, grow, shrink, wrap, direction),
       gapClasses(gap, rowGap, colGap),
       fontClasses(fontSize, fontWeight),
       fixedHeightClasses(height),
@@ -52,10 +83,24 @@ export function prepareStyles(props, ...extraClassNames) {
   };
 }
 
-export function displayClasses(display, text) {
+export function backgroundColorClasses(bg, accent) {
   const classes = [];
 
-  if (display) {
+  if (["white", "clear", "red", "green", "blue"].includes(bg)) {
+    classes.push(`filled-${bg}`);
+  }
+
+  if (["white", "clear", "red", "green", "blue"].includes(accent)) {
+    classes.push(`accented-${accent}`);
+  }
+
+  return classes;
+}
+
+export function displayClasses(display, text, cursor, invisible, scroll) {
+  const classes = [];
+
+  if (exists(display)) {
     if (display === "flex") {
       display = "flexbox";
     }
@@ -63,8 +108,26 @@ export function displayClasses(display, text) {
     classes.push(display);
   }
 
-  if (text) {
+  if (exists(text)) {
     classes.push(`text-${text}`);
+  }
+
+  if (exists(cursor)) {
+    classes.push(`cursor-${cursor}`);
+  }
+
+  if (invisible) {
+    classes.push("invisible");
+  }
+
+  if (exists(scroll)) {
+    if (scroll !== false) {
+      if (scroll === true) {
+        scroll = "all";
+      }
+
+      classes.push(`scroll-${scroll}`);
+    }
   }
 
   return classes;
@@ -73,34 +136,61 @@ export function displayClasses(display, text) {
 export function positionClasses(position, top, right, bottom, left) {
   const classes = [];
 
-  if (position) {
+  if (exists(position)) {
     classes.push(position);
   }
 
-  if (top) {
+  if (exists(top)) {
     classes.push(`top-${top}`);
   }
 
-  if (right) {
+  if (exists(right)) {
     classes.push(`right-${right}`);
   }
 
-  if (bottom) {
+  if (exists(bottom)) {
     classes.push(`bottom-${bottom}`);
   }
 
-  if (left) {
+  if (exists(left)) {
     classes.push(`left-${left}`);
   }
 
   return classes;
 }
 
-export function flexClasses(flex, reverse, align, justify, direction = "row") {
+export function gridClasses(grid) {
   const classes = [];
 
-  if (flex) {
+  if (exists(grid)) {
+    classes.push(`grid-${grid}`);
+  }
+
+  return classes;
+}
+
+export function flexClasses(
+  flex,
+  reverse,
+  align,
+  justify,
+  grow,
+  shrink,
+  wrap,
+  direction = "row"
+) {
+  const classes = [];
+
+  if (exists(flex)) {
     classes.push(`flex-${flex}`);
+  }
+
+  if (exists(grow)) {
+    classes.push(`grow-${grow}`);
+  }
+
+  if (exists(shrink)) {
+    classes.push(`shrink-${shrink}`);
   }
 
   if (reverse) {
@@ -109,12 +199,22 @@ export function flexClasses(flex, reverse, align, justify, direction = "row") {
     classes.push(direction);
   }
 
-  if (align) {
+  if (exists(align)) {
     classes.push(`align-${align}`);
   }
 
-  if (justify) {
+  if (exists(justify)) {
     classes.push(`justify-${justify}`);
+  }
+
+  if (exists(wrap)) {
+    if (wrap === "reverse") {
+      classes.push(`flex-wrap-reverse`);
+    } else if (wrap === "no") {
+      classes.push(`flex-nowrap`);
+    } else {
+      classes.push(`flex-wrap`);
+    }
   }
 
   return classes;
@@ -123,14 +223,14 @@ export function flexClasses(flex, reverse, align, justify, direction = "row") {
 export function gapClasses(gap, rowGap, colGap) {
   const classes = [];
 
-  if (gap) {
+  if (exists(gap)) {
     classes.push(`row-gap-${gap} column-gap-${gap}`);
   } else {
-    if (rowGap) {
+    if (exists(rowGap)) {
       classes.push(`row-gap-${rowGap}`);
     }
 
-    if (colGap) {
+    if (exists(colGap)) {
       classes.push(`column-gap-${colGap}`);
     }
   }
@@ -141,11 +241,11 @@ export function gapClasses(gap, rowGap, colGap) {
 export function fontClasses(fontSize, fontWeight) {
   const classes = [];
 
-  if (fontSize) {
+  if (exists(fontSize)) {
     classes.push(`font-size-${fontSize}`);
   }
 
-  if (fontWeight) {
+  if (exists(fontWeight)) {
     classes.push(`font-weight-${fontWeight}`);
   }
 
@@ -155,7 +255,7 @@ export function fontClasses(fontSize, fontWeight) {
 export function fixedHeightClasses(height) {
   const classes = [];
 
-  if (height !== undefined && height !== null) {
+  if (exists(height)) {
     if (height === false) {
       height = 0;
     }
@@ -170,7 +270,7 @@ export function fixedHeightClasses(height) {
 export function fixedWidthClasses(width) {
   const classes = [];
 
-  if (width !== undefined && width !== null) {
+  if (exists(width)) {
     if (width === false) {
       width = 0;
     }
@@ -185,12 +285,12 @@ export function fixedWidthClasses(width) {
 export function limitedHeightClasses(minHeight, maxHeight) {
   const classes = [];
 
-  if (minHeight) {
+  if (exists(minHeight)) {
     throwIfNotValidDimension(minHeight);
     classes.push(`min-height-${minHeight}`);
   }
 
-  if (maxHeight) {
+  if (exists(maxHeight)) {
     throwIfNotValidDimension(maxHeight);
     classes.push(`max-height-${maxHeight}`);
   }
@@ -201,12 +301,12 @@ export function limitedHeightClasses(minHeight, maxHeight) {
 export function limitedWidthClasses(minWidth, maxWidth) {
   const classes = [];
 
-  if (minWidth) {
+  if (exists(minWidth)) {
     throwIfNotValidDimension(minWidth);
     classes.push(`min-width-${minWidth}`);
   }
 
-  if (maxWidth) {
+  if (exists(maxWidth)) {
     throwIfNotValidDimension(maxWidth);
     classes.push(`max-width-${maxWidth}`);
   }
@@ -215,13 +315,13 @@ export function limitedWidthClasses(minWidth, maxWidth) {
 }
 
 export function spacingClasses(margin, padding) {
-  if (!!margin && typeof margin !== "object") {
+  if (exists(margin) && typeof margin !== "object") {
     margin = {
       all: margin,
     };
   }
 
-  if (!!padding && typeof padding !== "object") {
+  if (exists(padding) && typeof padding !== "object") {
     padding = {
       all: padding,
     };
@@ -235,35 +335,35 @@ export function spacingClasses(margin, padding) {
 export function marginClasses({ all, x, y, top, right, bottom, left } = {}) {
   const classes = [];
 
-  if (all) {
+  if (exists(all)) {
     classes.push(`margin-${all}`);
   }
 
-  if (x) {
+  if (exists(x)) {
     classes.push(`margin-x-${x}`);
   }
 
-  if (y) {
+  if (exists(y)) {
     classes.push(`margin-y-${y}`);
   }
 
-  if (top || right || bottom || left) {
+  if (exists(top) || exists(right) || exists(bottom) || exists(left)) {
     classes.push("specific-margin");
   }
 
-  if (top) {
+  if (exists(top)) {
     classes.push(`margin-top-${top}`);
   }
 
-  if (right) {
+  if (exists(right)) {
     classes.push(`margin-right-${right}`);
   }
 
-  if (bottom) {
+  if (exists(bottom)) {
     classes.push(`margin-bottom-${bottom}`);
   }
 
-  if (left) {
+  if (exists(left)) {
     classes.push(`margin-left-${left}`);
   }
 
@@ -273,35 +373,35 @@ export function marginClasses({ all, x, y, top, right, bottom, left } = {}) {
 export function paddingClasses({ all, x, y, top, right, bottom, left } = {}) {
   const classes = [];
 
-  if (all) {
+  if (exists(all)) {
     classes.push(`padding-${all}`);
   }
 
-  if (x) {
+  if (exists(x)) {
     classes.push(`padding-x-${x}`);
   }
 
-  if (y) {
+  if (exists(y)) {
     classes.push(`padding-y-${y}`);
   }
 
-  if (top || right || bottom || left) {
+  if (exists(top) || exists(right) || exists(bottom) || exists(left)) {
     classes.push("specific-padding");
   }
 
-  if (top) {
+  if (exists(top)) {
     classes.push(`padding-top-${top}`);
   }
 
-  if (right) {
+  if (exists(right)) {
     classes.push(`padding-right-${right}`);
   }
 
-  if (bottom) {
+  if (exists(bottom)) {
     classes.push(`padding-bottom-${bottom}`);
   }
 
-  if (left) {
+  if (exists(left)) {
     classes.push(`padding-left-${left}`);
   }
 
@@ -316,15 +416,26 @@ export function borderClasses({
   right,
   bottom,
   left,
+  radius,
   color = "dark",
 } = {}) {
   const classes = [];
 
-  if (all || top || right || bottom || left) {
+  if (exists(radius)) {
+    classes.push(`border-radius-${radius}`);
+  }
+
+  if (
+    exists(all) ||
+    exists(top) ||
+    exists(right) ||
+    exists(bottom) ||
+    exists(left)
+  ) {
     classes.push("bordered", `border-${color}`);
   }
 
-  if (all) {
+  if (exists(all)) {
     if (all === true) {
       all = 1;
     }
@@ -332,7 +443,7 @@ export function borderClasses({
     classes.push(`border-${all}`);
   }
 
-  if (x) {
+  if (exists(x)) {
     if (x === true) {
       x = 1;
     }
@@ -340,7 +451,7 @@ export function borderClasses({
     classes.push(`border-x-${x}`);
   }
 
-  if (y) {
+  if (exists(y)) {
     if (y === true) {
       y = 1;
     }
@@ -348,11 +459,11 @@ export function borderClasses({
     classes.push(`border-y-${y}`);
   }
 
-  if (top || right || bottom || left) {
+  if (exists(top) || exists(right) || exists(bottom) || exists(left)) {
     classes.push("specific-border");
   }
 
-  if (top) {
+  if (exists(top)) {
     if (top === true) {
       top = 1;
     }
@@ -360,7 +471,7 @@ export function borderClasses({
     classes.push(`border-top-${top}`);
   }
 
-  if (right) {
+  if (exists(right)) {
     if (right === true) {
       right = 1;
     }
@@ -368,7 +479,7 @@ export function borderClasses({
     classes.push(`border-right-${right}`);
   }
 
-  if (bottom) {
+  if (exists(bottom)) {
     if (bottom === true) {
       bottom = 1;
     }
@@ -376,7 +487,7 @@ export function borderClasses({
     classes.push(`border-bottom-${bottom}`);
   }
 
-  if (left) {
+  if (exists(left)) {
     if (left === true) {
       left = 1;
     }
@@ -390,9 +501,11 @@ export function borderClasses({
 export function outlineClasses(color) {
   const classes = [];
 
-  if (color) {
+  if (exists(color)) {
     classes.push("outlined", `outline-${color}`);
   }
+
+  return classes;
 }
 
 function convertToClassNameString(...items) {
@@ -411,6 +524,8 @@ function throwIfNotValidDimension(n) {
     "3/4",
     "full",
     "0",
+    "1px",
+    "2px",
     "1",
     "2",
     "3",
@@ -458,4 +573,8 @@ function throwIfNotValidDimension(n) {
       `Invalid dimension: ${n} must be one of ${allowed.join(", ")}`
     );
   }
+}
+
+function exists(val) {
+  return val !== undefined && val !== null;
 }

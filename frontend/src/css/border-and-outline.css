@@ -1,5 +1,18 @@
 .bordered {
   border-style: solid;
+  overflow: hidden;
+}
+
+.border-radius-1 {
+  border-radius: 0.5rem;
+}
+
+.border-radius-full {
+  border-radius: 100%;
+}
+
+.border-0 {
+  border-width: 0;
 }
 
 .border-1 {
@@ -90,7 +103,7 @@
   border-color: #a00;
 }
 
-.border-red {
+.border-green {
   border-color: #0a0;
 }
 

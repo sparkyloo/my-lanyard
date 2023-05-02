@@ -1,9 +1,9 @@
 const express = require("express");
-const { check } = require("express-validator");
 const { Lanyard } = require("../../db/models");
 const { requireAuth } = require("../../utils/auth");
-const { addTaggingRoutes } = require("../../utils/tagging");
+const { includeTaggings, addTaggingRoutes } = require("../../utils/tagging");
 const { notAllowed, notFound } = require("../../utils/errors");
+const { userCanViewItem, byUserOrSystem } = require("../../utils/misc");
 const {
   validateRequest,
   finishBadRequest,
@@ -11,7 +11,9 @@ const {
   finishGetRequest,
   finishPatchRequest,
   finishDeleteRequest,
+  createRequiredCheck,
 } = require("../../utils/validation");
+const { maybeGetManyCards } = require("./cards");
 
 const router = express.Router();
 
@@ -21,11 +23,11 @@ module.exports.maybeGetLanyard = maybeGetLanyard;
 
 addTaggingRoutes(router, "lanyardId", maybeGetLanyard);
 
-async function maybeGetLanyard(req, authorId, options = {}) {
-  const instance = await Lanyard.findByPk(req.params.id, options);
+async function maybeGetLanyard(instanceId, userId, options = {}) {
+  const instance = await Lanyard.findByPk(instanceId, options);
 
   if (instance) {
-    if (!!authorId && authorId !== instance.authorId) {
+    if (!userCanViewItem(userId, instance.authorId)) {
       throw notAllowed();
     }
 
@@ -49,13 +51,17 @@ function getLanyardValues({ body }) {
   return values;
 }
 
-const checkLanyardNameExists = check("name")
-  .exists({ checkFalsy: true })
-  .withMessage("Lanyards must have a name");
+const checkLanyardNameExists = createRequiredCheck("Name", (body) => body.name);
 
-const checkLanyardDescriptionExists = check("description")
-  .exists({ checkFalsy: true })
-  .withMessage("Lanyard must have a description");
+const checkLanyardDescriptionExists = createRequiredCheck(
+  "Description",
+  (body) => body.description
+);
+
+const checkLanyardCardIdsExists = createRequiredCheck(
+  "Cards",
+  (body) => body.cardIds
+);
 
 /**
  * create
@@ -64,19 +70,27 @@ router.post("/", async (req, res) => {
   try {
     const user = await requireAuth(req, res);
 
-    const { name, description } = await validateRequest(req, [
+    const { name, description, cardIds } = await validateRequest(req, [
       checkLanyardNameExists,
       checkLanyardDescriptionExists,
+      checkLanyardCardIdsExists,
     ]);
 
-    finishPostRequest(
-      res,
-      await Lanyard.create({
-        name,
-        description,
-        authorId: user.id,
-      })
-    );
+    const cards = await maybeGetManyCards(cardIds, user.id);
+
+    const instance = await Lanyard.create({
+      name,
+      description,
+      authorId: user.id,
+    });
+
+    await instance.addCards(cards);
+
+    await instance.reload({
+      include: "cards",
+    });
+
+    finishPostRequest(res, instance);
   } catch (caught) {
     finishBadRequest(res, caught);
   }
@@ -93,8 +107,9 @@ router.get("/", async (req, res) => {
       res,
       await Lanyard.findAll({
         where: {
-          authorId: user.id,
+          authorId: byUserOrSystem(user.id),
         },
+        include: ["taggings", "cards"],
       })
     );
   } catch (caught) {
@@ -106,7 +121,9 @@ router.get("/instance/:id", async (req, res) => {
   try {
     const user = await requireAuth(req, res);
 
-    const instance = await maybeGetLanyard(req, user.id);
+    const instance = await maybeGetLanyard(req.params.id, user.id, {
+      include: includeTaggings,
+    });
 
     finishGetRequest(res, instance);
   } catch (caught) {
@@ -121,13 +138,15 @@ router.patch("/instance/:id", async (req, res) => {
   try {
     const user = await requireAuth(req, res);
 
-    const instance = await maybeGetLanyard(req, user.id);
+    const instance = await maybeGetLanyard(req.params.id, user.id, {
+      include: includeTaggings,
+    });
 
     await instance.update(getLanyardValues(req));
 
     finishPatchRequest(res, instance);
   } catch (caught) {
-    finishBadRequest(caught);
+    finishBadRequest(res, caught);
   }
 });
 
@@ -138,12 +157,12 @@ router.delete("/instance/:id", async (req, res) => {
   try {
     const user = await requireAuth(req, res);
 
-    const instance = await maybeGetLanyard(req, user.id);
+    const instance = await maybeGetLanyard(req.params.id, user.id);
 
     await instance.destroy();
 
     finishDeleteRequest(res);
   } catch (caught) {
-    finishBadRequest(caught);
+    finishBadRequest(res, caught);
   }
 });

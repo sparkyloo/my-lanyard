@@ -1,13 +1,21 @@
-export function createSelectionReducer(prefix) {
+export function createSelectionReducer(prefix, OTHER_RESET) {
   const initialState = {};
 
+  const RESET = `${prefix}/reset`;
   const SELECTED = `${prefix}/selected`;
   const DESELECTED = `${prefix}/deselected`;
 
   function reducer(state = initialState, { type, payload }) {
     let nextState = { ...state };
 
+    if (!!OTHER_RESET && type === OTHER_RESET) {
+      type = RESET;
+    }
+
     switch (type) {
+      case RESET: {
+        return { ...initialState };
+      }
       case SELECTED: {
         nextState[payload] = true;
 
@@ -24,17 +32,24 @@ export function createSelectionReducer(prefix) {
     }
   }
 
-  reducer.makeSelection = (id) => {
+  reducer.reset = () => {
+    return {
+      type: RESET,
+      payload: null,
+    };
+  };
+
+  reducer.pick = (id) => {
     return {
       type: SELECTED,
       payload: id,
     };
   };
 
-  reducer.forgetSelection = () => {
+  reducer.forget = (id) => {
     return {
       type: DESELECTED,
-      payload: null,
+      payload: id,
     };
   };
 

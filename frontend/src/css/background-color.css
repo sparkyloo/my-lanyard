@@ -1,0 +1,134 @@
+.filled-white {
+  background-color: white;
+}
+
+.filled-clear {
+  background-color: transparent;
+}
+
+.filled-clear:hover:not(:disabled),
+.filled-clear:focus:not(:disabled) {
+  background-color: rgba(0,0,0,0.2);
+}
+
+.filled-clear:active:not(:disabled) {
+  background-color: rgba(0,0,0,0.3);
+}
+
+.filled-red {
+  color: white;
+  background-color: #a00;
+}
+
+.filled-red:disabled {
+  filter: grayscale(80%) brightness(20);
+}
+
+.filled-red:hover:not(:disabled),
+.filled-red:focus:not(:disabled) {
+  background-color: #900;
+}
+
+.filled-red:active:not(:disabled) {
+  background-color: #800;
+}
+
+.filled-green {
+  color: white;
+  background-color: #0a0;
+}
+
+.filled-green:disabled {
+  filter: grayscale(80%) brightness(20);
+}
+
+.filled-green:hover:not(:disabled),
+.filled-green:focus:not(:disabled) {
+  background-color: #090;
+}
+
+.filled-green:active:not(:disabled) {
+  background-color: #080;
+}
+
+.filled-blue {
+  color: white;
+  background-color: #00a;
+}
+
+.filled-blue:disabled {
+  filter: grayscale(80%) brightness(20);
+}
+
+.filled-blue:hover:not(:disabled),
+.filled-blue:focus:not(:disabled) {
+  background-color: #009;
+}
+
+.filled-blue:active:not(:disabled) {
+  background-color: #008;
+}
+
+.accented-clear {
+  accent-color: transparent;
+}
+
+.accented-clear:hover:not(:disabled),
+.accented-clear:focus:not(:disabled) {
+  accent-color: rgba(0,0,0,0.2);
+}
+
+.accented-clear:active:not(:disabled) {
+  accent-color: rgba(0,0,0,0.3);
+}
+
+.accented-red {
+  accent-color: #a00;
+}
+
+.accented-red:disabled {
+  filter: grayscale(80%) brightness(20);
+}
+
+.accented-red:hover:not(:disabled),
+.accented-red:focus:not(:disabled) {
+  accent-color: #900;
+}
+
+.accented-red:active:not(:disabled) {
+  accent-color: #800;
+}
+
+.accented-green {
+  accent-color: #0a0;
+}
+
+.accented-green:disabled {
+  filter: grayscale(80%) brightness(20);
+}
+
+.accented-green:hover:not(:disabled),
+.accented-green:focus:not(:disabled) {
+  accent-color: #090;
+}
+
+.accented-green:active:not(:disabled) {
+  accent-color: #080;
+}
+
+.accented-blue {
+  accent-color: #00a;
+}
+
+.accented-blue:disabled {
+  filter: grayscale(80%) brightness(20);
+}
+
+.accented-blue:hover:not(:disabled),
+.accented-blue:focus:not(:disabled) {
+  accent-color: #009;
+}
+
+.accented-blue:active:not(:disabled) {
+  accent-color: #008;
+}

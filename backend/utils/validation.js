@@ -1,12 +1,168 @@
-const { validationResult } = require("express-validator");
+function createMultipleChecks(name, getValue, getChecks) {
+  return (body) => {
+    const checks = getChecks({
+      exists: () => createRequiredCheck(name, getValue),
+      isEmail: () => createEmailCheck(name, getValue),
+      isUrl: () => createUrlCheck(name, getValue),
+      isLte: (max) => createMaximumNumberCheck(name, max, getValue),
+      isGte: (min) => createMinimumNumberCheck(name, min, getValue),
+      isLteAndGte: (min, max) =>
+        createRangedNumberCheck(name, min, max, getValue),
+      lengthIsLte: (max) => createMaximumLengthCheck(name, max, getValue),
+      lengthIsGte: (min) => createMinimumLengthCheck(name, min, getValue),
+      lengthIsLteAndGte: (min, max) =>
+        createRangedLengthCheck(name, min, max, getValue),
+    });
 
-async function validateRequest(req, validators) {
-  await Promise.all(validators.map((validation) => validation.run(req)));
+    for (const check of checks) {
+      const result = check(body);
 
-  const errors = validationResult(req);
+      if (result !== true) {
+        return result || `${name} failed a validation check`;
+      }
+    }
 
-  if (!errors.isEmpty()) {
-    throw errors.array();
+    return true;
+  };
+}
+
+function createRequiredCheck(name, getValue) {
+  return (body) => {
+    const value = getValue(body);
+
+    if (value !== undefined && value !== null && value !== "") {
+      return true;
+    }
+
+    return `${name} is required`;
+  };
+}
+
+function createEmailCheck(name, getValue) {
+  return (body) => {
+    const value = getValue(body);
+
+    if (!value) {
+      return true;
+    }
+
+    if (typeof value === "string") {
+      const parts = value.split("@");
+
+      if (parts.length === 2) {
+        const latterParts = parts[1].split(".");
+
+        if (latterParts.length > 1) {
+          return true;
+        }
+      }
+    }
+
+    return `${name} must be a valid email`;
+  };
+}
+
+function createUrlCheck(name, getValue) {
+  return (body) => {
+    const value = getValue(body);
+
+    if (!value) {
+      return true;
+    }
+
+    if (typeof value === "string") {
+      if (value.startsWith("http://") || value.startsWith("https://")) {
+        const parts = value.split(".");
+
+        if (parts.length > 1) {
+          return true;
+        }
+      }
+    }
+
+    return `${name} must be a valid URL`;
+  };
+}
+
+function createMaximumNumberCheck(name, max, getValue) {
+  return (body) => {
+    const value = getValue(body);
+
+    if (CSSFontPaletteValuesRule <= max) {
+      return true;
+    }
+
+    return `${name} must be at most ${max}`;
+  };
+}
+
+function createMinimumNumberCheck(name, min, getValue) {
+  return (body) => {
+    const value = getValue(body);
+
+    if (CSSFontPaletteValuesRule >= min) {
+      return true;
+    }
+
+    return `${name} must be at least ${min}`;
+  };
+}
+
+function createRangedNumberCheck(name, min, max, getValue) {
+  return (body) => {
+    const value = getValue(body);
+
+    if (CSSFontPaletteValuesRule >= min && CSSFontPaletteValuesRule <= max) {
+      return true;
+    }
+
+    return `${name} must be at least ${min} and at most ${max}`;
+  };
+}
+
+function createMaximumLengthCheck(name, max, getValue) {
+  return (body) => {
+    const value = getValue(body);
+
+    if (value?.length <= max) {
+      return true;
+    }
+
+    return `${name} must have a length of at most ${max}`;
+  };
+}
+
+function createMinimumLengthCheck(name, min, getValue) {
+  return (body) => {
+    const value = getValue(body);
+
+    if (value?.length >= min) {
+      return true;
+    }
+
+    return `${name} must have a length of at least ${min}`;
+  };
+}
+
+function createRangedLengthCheck(name, min, max, getValue) {
+  return (body) => {
+    const value = getValue(body);
+
+    if (value?.length >= min && value?.length <= max) {
+      return true;
+    }
+
+    return `${name} must have a length of at least ${min} and at most ${max}`;
+  };
+}
+
+function validateRequest(req, validators) {
+  const errors = validators
+    .map((check) => check(req.body))
+    .filter((result) => typeof result === "string");
+
+  if (errors.length) {
+    throw errors;
   }
 
   return req.body;
@@ -100,6 +256,16 @@ function finishDeleteRequest(res) {
 }
 
 module.exports = {
+  createMultipleChecks,
+  createRequiredCheck,
+  createEmailCheck,
+  createUrlCheck,
+  createMaximumNumberCheck,
+  createMinimumNumberCheck,
+  createRangedNumberCheck,
+  createMaximumLengthCheck,
+  createMinimumLengthCheck,
+  createRangedLengthCheck,
   validateRequest,
   finishBadRequest,
   finishPostRequest,

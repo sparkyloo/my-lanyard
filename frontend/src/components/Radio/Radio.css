@@ -1,0 +1,7 @@
+input[type="radio"] {
+  cursor: pointer;
+}
+
+input[type="radio"]:disabled {
+  cursor: not-allowed;
+}

@@ -17,6 +17,7 @@ export function Input({ ...props }) {
     className,
     label,
     value,
+    disabled,
     placeholder,
     type = "text",
     onChange,
@@ -25,10 +26,23 @@ export function Input({ ...props }) {
     ...containerProps
   } = prepareStyles(props);
 
+  if (containerProps.setValue) {
+    delete containerProps.setValue;
+  }
+
+  if (!inputProps.border) {
+    inputProps.rounded = true;
+
+    inputProps.border = {
+      all: 1,
+      color: "light",
+    };
+  }
+
   if (!inputProps.padding) {
     inputProps.padding = {
       x: 0.5,
-      y: 0.25,
+      y: 0.5,
     };
   }
 
@@ -38,6 +52,7 @@ export function Input({ ...props }) {
       <input
         type={type}
         value={value}
+        disabled={disabled}
         onChange={onChange}
         placeholder={placeholder}
         {...prepareStyles(inputProps)}

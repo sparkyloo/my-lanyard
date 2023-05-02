@@ -1,7 +1,9 @@
 import React from "react";
 
 import "./index.css";
+import "./css/background-color.css";
 import "./css/display.css";
+import "./css/grid.css";
 import "./css/flex.css";
 import "./css/font.css";
 import "./css/size-width.css";

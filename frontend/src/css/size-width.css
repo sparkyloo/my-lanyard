@@ -26,6 +26,14 @@
   width: 0;
 }
 
+.fixed-width-1px {
+  width: 1px;
+}
+
+.fixed-width-2px {
+  width: 2px;
+}
+
 .fixed-width-1 {
   width: 0.5rem;
 }

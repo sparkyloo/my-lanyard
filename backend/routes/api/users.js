@@ -1,31 +1,36 @@
 const express = require("express");
-const { check } = require("express-validator");
-
 const { User } = require("../../db/models");
 const { setTokenCookie } = require("../../utils/auth");
-const { validateRequest, finishBadRequest } = require("../../utils/validation");
+const {
+  validateRequest,
+  finishBadRequest,
+  createMultipleChecks,
+  createRequiredCheck,
+} = require("../../utils/validation");
 
 const router = express.Router();
 
-const checkSignupFirstName = check("firstName")
-  .exists({ checkFalsy: true })
-  .isString()
-  .withMessage("Please provide a valid first name.");
+const checkSignupFirstName = createRequiredCheck(
+  "First name",
+  (body) => body.firstName
+);
 
-const checkSignupLastName = check("lastName")
-  .exists({ checkFalsy: true })
-  .isString()
-  .withMessage("Please provide a valid last name.");
+const checkSignupLastName = createRequiredCheck(
+  "Last name",
+  (body) => body.lastName
+);
 
-const checkSignupEmail = check("email")
-  .exists({ checkFalsy: true })
-  .isEmail()
-  .withMessage("Please provide a valid email.");
+const checkSignupEmail = createMultipleChecks(
+  "Email",
+  (body) => body.firstName,
+  (check) => [check.exists(), check.isEmail()]
+);
 
-const checkSignupPassword = check("password")
-  .exists({ checkFalsy: true })
-  .isLength({ min: 6 })
-  .withMessage("Password must be 6 characters or more.");
+const checkSignupPassword = createMultipleChecks(
+  "Password",
+  (body) => body.firstName,
+  (check) => [check.exists(), check.lengthIsGte(6)]
+);
 
 router.post("/", async (req, res) => {
   try {

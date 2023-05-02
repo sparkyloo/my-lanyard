@@ -1,14 +1,23 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useDispatch } from "react-redux";
 
 export function useForm(submitHandler) {
   const dispatch = useDispatch();
+  const [isPending, setIsPending] = useState(false);
 
-  const onSubmitButtonClick = useCallback(() => {
-    submitHandler(dispatch);
-  }, []);
+  const onSubmitButtonClick = useCallback(async () => {
+    try {
+      setIsPending(true);
+      await submitHandler(dispatch);
+    } finally {
+      setIsPending(false);
+    }
+  }, [submitHandler, dispatch]);
 
   return {
-    onClick: onSubmitButtonClick,
+    isPending,
+    submitButton: {
+      onClick: onSubmitButtonClick,
+    },
   };
 }

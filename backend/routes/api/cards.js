@@ -1,37 +1,62 @@
 const express = require("express");
-const { check } = require("express-validator");
 const { Card } = require("../../db/models");
 const { requireAuth } = require("../../utils/auth");
-const { addTaggingRoutes } = require("../../utils/tagging");
+const { includeTaggings, addTaggingRoutes } = require("../../utils/tagging");
 const { notAllowed, notFound } = require("../../utils/errors");
+const { inList, userCanViewItem, byUserOrSystem } = require("../../utils/misc");
 const {
-  validateRequest,
   finishBadRequest,
   finishPostRequest,
   finishGetRequest,
   finishPatchRequest,
   finishDeleteRequest,
 } = require("../../utils/validation");
+const { maybeGetIcon } = require("./icons");
+
+const includeIconAndTagging = ["icon", includeTaggings];
 
 const router = express.Router();
 
 module.exports = router;
 
 module.exports.maybeGetCard = maybeGetCard;
+module.exports.maybeGetManyCards = maybeGetManyCards;
 
 addTaggingRoutes(router, "cardId", maybeGetCard);
 
-async function maybeGetCard(req, authorId, options = {}) {
-  const instance = await Card.findByPk(req.params.id, options);
+async function maybeGetCard(instanceId, userId, options = {}) {
+  const instance = await Card.findByPk(instanceId, options);
 
   if (instance) {
-    if (!!authorId && authorId !== instance.authorId) {
+    if (!userCanViewItem(userId, instance.authorId)) {
       throw notAllowed();
     }
 
     return instance;
   } else {
     throw notFound("Card");
+  }
+}
+
+async function maybeGetManyCards(instanceIds, userId, options = {}) {
+  const instances = await Card.findAll({
+    ...options,
+    where: {
+      id: inList(instanceIds),
+      authorId: byUserOrSystem(userId),
+    },
+  });
+
+  for (const instance of instances) {
+    if (!userCanViewItem(userId, instance.authorId)) {
+      throw notAllowed();
+    }
+  }
+
+  if (instances.length < instanceIds.length) {
+    throw notFound("Card");
+  } else {
+    return instances;
   }
 }
 
@@ -45,10 +70,6 @@ function getCardValues({ body }) {
   return values;
 }
 
-const checkCardTextIsString = check("text")
-  .isString()
-  .withMessage("Card text must be a string");
-
 /**
  * create
  */
@@ -56,15 +77,19 @@ router.post("/", async (req, res) => {
   try {
     const user = await requireAuth(req, res);
 
-    const { text } = await validateRequest(req, [checkCardTextIsString]);
+    await maybeGetIcon(req.body.iconId, user.id);
 
-    finishPostRequest(
-      res,
-      await Card.create({
-        text,
-        authorId: user.id,
-      })
-    );
+    const instance = await Card.create({
+      text: req.body.text,
+      iconId: req.body.iconId,
+      authorId: user.id,
+    });
+
+    await instance.reload({
+      include: "icon",
+    });
+
+    finishPostRequest(res, instance);
   } catch (caught) {
     finishBadRequest(res, caught);
   }
@@ -81,8 +106,9 @@ router.get("/", async (req, res) => {
       res,
       await Card.findAll({
         where: {
-          authorId: user.id,
+          authorId: byUserOrSystem(user.id),
         },
+        include: includeIconAndTagging,
       })
     );
   } catch (caught) {
@@ -94,7 +120,9 @@ router.get("/instance/:id", async (req, res) => {
   try {
     const user = await requireAuth(req, res);
 
-    const instance = await maybeGetCard(req, user.id);
+    const instance = await maybeGetCard(req.params.id, user.id, {
+      include: includeIconAndTagging,
+    });
 
     finishGetRequest(res, instance);
   } catch (caught) {
@@ -109,15 +137,15 @@ router.patch("/instance/:id", async (req, res) => {
   try {
     const user = await requireAuth(req, res);
 
-    await validateRequest(req, [checkIconImageUrlIsUrl]);
-
-    const instance = await maybeGetCard(req, user.id);
+    const instance = await maybeGetCard(req.params.id, user.id, {
+      include: includeTaggings,
+    });
 
     await instance.update(getCardValues(req));
 
     finishPatchRequest(res, instance);
   } catch (caught) {
-    finishBadRequest(caught);
+    finishBadRequest(res, caught);
   }
 });
 
@@ -128,12 +156,12 @@ router.delete("/instance/:id", async (req, res) => {
   try {
     const user = await requireAuth(req, res);
 
-    const instance = await maybeGetCard(req, user.id);
+    const instance = await maybeGetCard(req.params.id, user.id);
 
     await instance.destroy();
 
     finishDeleteRequest(res);
   } catch (caught) {
-    finishBadRequest(caught);
+    finishBadRequest(res, caught);
   }
 });
