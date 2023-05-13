@@ -1,0 +1,37 @@
+.CardDisplay {
+  position: relative;
+  width: 8rem;
+  height: 8rem;
+}
+
+.CardDisplay .CardPreview {
+  position: absolute;
+  left: 0;
+  border-width: 1px;
+  border-radius: 0.5rem;
+  border-color: #ccc;
+}
+
+.CardDisplay .CardPreview_0 {
+  z-index: 4;
+}
+
+.CardDisplay .CardPreview_1 {
+  z-index: 3;
+  transform: rotate(6deg);
+}
+
+.CardDisplay .CardPreview_2 {
+  z-index: 2;
+  transform: rotate(-6deg);
+}
+
+.CardDisplay .CardPreview_3 {
+  z-index: 1;
+  transform: rotate(3deg);
+}
+
+.CardDisplay .CardPreview_4 {
+  z-index: 0;
+  transform: rotate(-3deg);
+}

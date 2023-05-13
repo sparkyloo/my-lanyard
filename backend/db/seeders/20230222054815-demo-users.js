@@ -19,7 +19,7 @@ module.exports = {
      */
 
     const admin = await User.create({
-      id: 1,
+      id: -1,
       firstName: "System",
       lastName: "Admin",
       email: "system.admin@mylanyard.org",
@@ -27,7 +27,10 @@ module.exports = {
     });
 
     const colorIconImages = await fs.readdir(
-      path.join(__dirname, "../../../frontend/public/system-images/colors")
+      path.join(
+        __dirname,
+        "../../../frontend/public/system-images/colors/cropped"
+      )
     );
 
     const colorTag = await Tag.create({
@@ -40,7 +43,7 @@ module.exports = {
         return {
           authorId: admin.id,
           name: getIconName(filename),
-          imageUrl: `/system-images/colors/${filename}`,
+          imageUrl: `/system-images/colors/cropped/${filename}`,
         };
       }),
       {
@@ -62,7 +65,10 @@ module.exports = {
     );
 
     const emotionIconImages = await fs.readdir(
-      path.join(__dirname, "../../../frontend/public/system-images/emotions")
+      path.join(
+        __dirname,
+        "../../../frontend/public/system-images/emotions/cropped"
+      )
     );
 
     const emotionTag = await Tag.create({
@@ -75,7 +81,7 @@ module.exports = {
         return {
           authorId: admin.id,
           name: getIconName(filename),
-          imageUrl: `/system-images/emotions/${filename}`,
+          imageUrl: `/system-images/emotions/cropped/${filename}`,
         };
       }),
       {
@@ -97,7 +103,10 @@ module.exports = {
     );
 
     const foodIconImages = await fs.readdir(
-      path.join(__dirname, "../../../frontend/public/system-images/foods")
+      path.join(
+        __dirname,
+        "../../../frontend/public/system-images/foods/cropped"
+      )
     );
 
     const foodTag = await Tag.create({
@@ -110,7 +119,7 @@ module.exports = {
         return {
           authorId: admin.id,
           name: getIconName(filename),
-          imageUrl: `/system-images/foods/${filename}`,
+          imageUrl: `/system-images/foods/cropped/${filename}`,
         };
       }),
       {
@@ -132,7 +141,10 @@ module.exports = {
     );
 
     const otherIconImages = await fs.readdir(
-      path.join(__dirname, "../../../frontend/public/system-images/other")
+      path.join(
+        __dirname,
+        "../../../frontend/public/system-images/other/cropped"
+      )
     );
 
     const otherTag = await Tag.create({
@@ -145,7 +157,7 @@ module.exports = {
         return {
           authorId: admin.id,
           name: getIconName(filename),
-          imageUrl: `/system-images/other/${filename}`,
+          imageUrl: `/system-images/other/cropped/${filename}`,
         };
       }),
       {
@@ -165,6 +177,13 @@ module.exports = {
         validate: true,
       }
     );
+
+    await User.create({
+      firstName: "Temple",
+      lastName: "Grandin",
+      email: "demo.user@mylanyard.org",
+      passwordHash: bcrypt.hashSync("password"),
+    });
   },
 
   async down() {

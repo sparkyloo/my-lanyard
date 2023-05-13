@@ -1,5 +1,4 @@
 const express = require("express");
-const { check } = require("express-validator");
 const { User } = require("../../db/models");
 const {
   setTokenCookie,
@@ -7,7 +6,11 @@ const {
   restoreUser,
 } = require("../../utils/auth");
 const { notRecognized } = require("../../utils/errors");
-const { validateRequest, finishBadRequest } = require("../../utils/validation");
+const {
+  validateRequest,
+  finishBadRequest,
+  createMultipleChecks,
+} = require("../../utils/validation");
 
 const router = express.Router();
 
@@ -33,14 +36,17 @@ router.delete("/", (req, res) => {
   return res.json(null);
 });
 
-const checkLoginCredential = check("credential")
-  .exists({ checkFalsy: true })
-  .notEmpty()
-  .withMessage("Please provide a valid email.");
+const checkLoginCredential = createMultipleChecks(
+  "Email",
+  (body) => body.credential,
+  (check) => [check.exists(), check.isEmail()]
+);
 
-const checkLoginPassword = check("password")
-  .exists({ checkFalsy: true })
-  .withMessage("Please provide a password.");
+const checkLoginPassword = createMultipleChecks(
+  "Password",
+  (body) => body.password,
+  (check) => [check.exists(), check.lengthIsGte(6)]
+);
 
 router.post("/", async (req, res, next) => {
   try {

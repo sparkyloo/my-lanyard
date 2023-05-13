@@ -1,9 +1,9 @@
 const express = require("express");
-const { check } = require("express-validator");
 const { Icon } = require("../../db/models");
-const { requireAuth } = require("../../utils/auth");
-const { addTaggingRoutes } = require("../../utils/tagging");
+const { requireAuth, restoreUser } = require("../../utils/auth");
+const { includeTaggings, addTaggingRoutes } = require("../../utils/tagging");
 const { notAllowed, notFound } = require("../../utils/errors");
+const { userCanViewItem, byUserOrSystem, inList } = require("../../utils/misc");
 const {
   validateRequest,
   finishBadRequest,
@@ -11,27 +11,54 @@ const {
   finishGetRequest,
   finishPatchRequest,
   finishDeleteRequest,
+  createRequiredCheck,
+  createMultipleChecks,
+  createUrlCheck,
 } = require("../../utils/validation");
+const { Op } = require("sequelize");
 
 const router = express.Router();
 
 module.exports = router;
 
 module.exports.maybeGetIcon = maybeGetIcon;
+module.exports.maybeGetManyIcons = maybeGetManyIcons;
 
-addTaggingRoutes(router, "iconId", maybeGetIcon);
+addTaggingRoutes(router, "iconId", maybeGetIcon, maybeGetManyIcons);
 
-async function maybeGetIcon(req, authorId, options = {}) {
-  const instance = await Icon.findByPk(req.params.id, options);
+async function maybeGetIcon(instanceId, userId, options = {}) {
+  const instance = await Icon.findByPk(instanceId, options);
 
   if (instance) {
-    if (!!authorId && authorId !== instance.authorId) {
+    if (!userCanViewItem(userId, instance.authorId)) {
       throw notAllowed();
     }
 
     return instance;
   } else {
     throw notFound("Icon");
+  }
+}
+
+async function maybeGetManyIcons(instanceIds, userId, options = {}) {
+  const instances = await Icon.findAll({
+    ...options,
+    where: {
+      id: inList(instanceIds),
+      authorId: byUserOrSystem(userId),
+    },
+  });
+
+  for (const instance of instances) {
+    if (!userCanViewItem(userId, instance.authorId)) {
+      throw notAllowed();
+    }
+  }
+
+  if (instances.length < instanceIds.length) {
+    throw notFound("Icon");
+  } else {
+    return instances;
   }
 }
 
@@ -49,17 +76,15 @@ function getIconValues({ body }) {
   return values;
 }
 
-const checkIconNameExists = check("name")
-  .exists({ checkFalsy: true })
-  .withMessage("Icons must have a name");
+const checkIconNameExists = createRequiredCheck("Name", (body) => body.name);
 
-const checkIconImageUrlExists = check("imageUrl")
-  .exists({ checkFalsy: true })
-  .withMessage("Icon must have a imageURL");
+const checkIconImageUrlExists = createMultipleChecks(
+  "Image",
+  (body) => body.imageUrl,
+  (check) => [check.exists(), check.isUrl()]
+);
 
-const checkIconImageUrlIsUrl = check("imageUrl")
-  .isURL()
-  .withMessage("Icon image must be a valid URL");
+const checkIconImageUrlIsUrl = createUrlCheck("Image", (body) => body.imageUrl);
 
 /**
  * create
@@ -71,7 +96,6 @@ router.post("/", async (req, res) => {
     const { name, imageUrl } = await validateRequest(req, [
       checkIconNameExists,
       checkIconImageUrlExists,
-      checkIconImageUrlIsUrl,
     ]);
 
     finishPostRequest(
@@ -92,14 +116,15 @@ router.post("/", async (req, res) => {
  */
 router.get("/", async (req, res) => {
   try {
-    const user = await requireAuth(req, res);
+    const user = await restoreUser(req, res);
 
     finishGetRequest(
       res,
       await Icon.findAll({
         where: {
-          authorId: user.id,
+          authorId: byUserOrSystem(user?.id),
         },
+        include: includeTaggings,
       })
     );
   } catch (caught) {
@@ -111,7 +136,9 @@ router.get("/instance/:id", async (req, res) => {
   try {
     const user = await requireAuth(req, res);
 
-    const instance = await maybeGetIcon(req, user.id);
+    const instance = await maybeGetIcon(req.params.id, user.id, {
+      include: includeTaggings,
+    });
 
     finishGetRequest(res, instance);
   } catch (caught) {
@@ -128,13 +155,15 @@ router.patch("/instance/:id", async (req, res) => {
 
     await validateRequest(req, [checkIconImageUrlIsUrl]);
 
-    const instance = await maybeGetIcon(req, user.id);
+    const instance = await maybeGetIcon(req.params.id, user.id, {
+      include: includeTaggings,
+    });
 
     await instance.update(getIconValues(req));
 
     finishPatchRequest(res, instance);
   } catch (caught) {
-    finishBadRequest(caught);
+    finishBadRequest(res, caught);
   }
 });
 
@@ -145,12 +174,12 @@ router.delete("/instance/:id", async (req, res) => {
   try {
     const user = await requireAuth(req, res);
 
-    const instance = await maybeGetIcon(req, user.id);
+    const instance = await maybeGetIcon(req.params.id, user.id);
 
     await instance.destroy();
 
     finishDeleteRequest(res);
   } catch (caught) {
-    finishBadRequest(caught);
+    finishBadRequest(res, caught);
   }
 });

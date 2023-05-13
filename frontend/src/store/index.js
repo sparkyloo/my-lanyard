@@ -1,10 +1,10 @@
 import { createStore, combineReducers, applyMiddleware, compose } from "redux";
 import thunk from "redux-thunk";
 import auth from "./reducers/auth";
-import cards, { fetchSystemCards } from "./reducers/cards";
-import icons, { fetchSystemIcons } from "./reducers/icons";
-import lanyards, { fetchSystemLanyards } from "./reducers/lanyards";
-import tags, { fetchSystemTags } from "./reducers/tags";
+import cards from "./reducers/cards";
+import icons from "./reducers/icons";
+import lanyards from "./reducers/lanyards";
+import tags from "./reducers/tags";
 
 const rootReducer = combineReducers({
   auth,
@@ -13,11 +13,6 @@ const rootReducer = combineReducers({
   lanyards,
   tags,
 });
-
-window.fetchSystemCards = fetchSystemCards;
-window.fetchSystemIcons = fetchSystemIcons;
-window.fetchSystemLanyards = fetchSystemLanyards;
-window.fetchSystemTags = fetchSystemTags;
 
 let enhancer;
 

@@ -1,0 +1,59 @@
+.invisible {
+  opacity: 0;
+}
+
+.hidden {
+  display: none;
+}
+
+.flexbox {
+  display: flex;
+}
+
+.grid {
+  display: grid;
+}
+
+.block {
+  display: block;
+}
+
+.inline {
+  display: inline;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.text-start {
+  text-align: start;
+}
+
+.text-end {
+  text-align: end;
+}
+
+.cursor-normal {
+  cursor: auto;
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.cursor-blocked {
+  cursor: not-allowed;
+}
+
+.scroll-all {
+  overflow: scroll !important;
+}
+
+.scroll-x {
+  overflow-x: scroll !important;
+}
+
+.scroll-y {
+  overflow-y: scroll !important;
+}

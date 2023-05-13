@@ -1,9 +1,9 @@
 const express = require("express");
-const { check } = require("express-validator");
-const { Lanyard } = require("../../db/models");
-const { requireAuth } = require("../../utils/auth");
-const { addTaggingRoutes } = require("../../utils/tagging");
+const { Lanyard, Tagging, Card, Icon } = require("../../db/models");
+const { requireAuth, restoreUser } = require("../../utils/auth");
+const { includeTaggings, addTaggingRoutes } = require("../../utils/tagging");
 const { notAllowed, notFound } = require("../../utils/errors");
+const { userCanViewItem, byUserOrSystem, inList } = require("../../utils/misc");
 const {
   validateRequest,
   finishBadRequest,
@@ -11,27 +11,68 @@ const {
   finishGetRequest,
   finishPatchRequest,
   finishDeleteRequest,
+  createRequiredCheck,
 } = require("../../utils/validation");
+const { maybeGetManyCards } = require("./cards");
 
 const router = express.Router();
 
 module.exports = router;
 
 module.exports.maybeGetLanyard = maybeGetLanyard;
+module.exports.maybeGetManyLanyards = maybeGetManyLanyards;
 
-addTaggingRoutes(router, "lanyardId", maybeGetLanyard);
+addTaggingRoutes(router, "lanyardId", maybeGetLanyard, maybeGetManyLanyards);
 
-async function maybeGetLanyard(req, authorId, options = {}) {
-  const instance = await Lanyard.findByPk(req.params.id, options);
+const includeCards = {
+  as: "cards",
+  model: Card,
+  include: [
+    {
+      as: "icon",
+      model: Icon,
+    },
+  ],
+};
+
+const includeCardsAndTaggings = [includeTaggings, includeCards];
+
+async function maybeGetLanyard(instanceId, userId, options = {}) {
+  const instance = await Lanyard.findByPk(instanceId, options);
 
   if (instance) {
-    if (!!authorId && authorId !== instance.authorId) {
+    if (
+      typeof userId !== "undefined" &&
+      !userCanViewItem(userId, instance.authorId)
+    ) {
       throw notAllowed();
     }
 
     return instance;
   } else {
     throw notFound("Lanyard");
+  }
+}
+
+async function maybeGetManyLanyards(instanceIds, userId, options = {}) {
+  const instances = await Lanyard.findAll({
+    ...options,
+    where: {
+      id: inList(instanceIds),
+      authorId: byUserOrSystem(userId),
+    },
+  });
+
+  for (const instance of instances) {
+    if (!userCanViewItem(userId, instance.authorId)) {
+      throw notAllowed();
+    }
+  }
+
+  if (instances.length < instanceIds.length) {
+    throw notFound("Lanyard");
+  } else {
+    return instances;
   }
 }
 
@@ -49,13 +90,17 @@ function getLanyardValues({ body }) {
   return values;
 }
 
-const checkLanyardNameExists = check("name")
-  .exists({ checkFalsy: true })
-  .withMessage("Lanyards must have a name");
+const checkLanyardNameExists = createRequiredCheck("Name", (body) => body.name);
 
-const checkLanyardDescriptionExists = check("description")
-  .exists({ checkFalsy: true })
-  .withMessage("Lanyard must have a description");
+const checkLanyardDescriptionExists = createRequiredCheck(
+  "Description",
+  (body) => body.description
+);
+
+const checkLanyardCardIdsExists = createRequiredCheck(
+  "Cards",
+  (body) => body.cardIds
+);
 
 /**
  * create
@@ -64,19 +109,27 @@ router.post("/", async (req, res) => {
   try {
     const user = await requireAuth(req, res);
 
-    const { name, description } = await validateRequest(req, [
+    const { name, description, cardIds } = await validateRequest(req, [
       checkLanyardNameExists,
       checkLanyardDescriptionExists,
+      checkLanyardCardIdsExists,
     ]);
 
-    finishPostRequest(
-      res,
-      await Lanyard.create({
-        name,
-        description,
-        authorId: user.id,
-      })
-    );
+    const cards = await maybeGetManyCards(cardIds, user.id);
+
+    const instance = await Lanyard.create({
+      name,
+      description,
+      authorId: user.id,
+    });
+
+    await instance.addCards(cards);
+
+    await instance.reload({
+      include: includeCardsAndTaggings,
+    });
+
+    finishPostRequest(res, instance);
   } catch (caught) {
     finishBadRequest(res, caught);
   }
@@ -87,14 +140,15 @@ router.post("/", async (req, res) => {
  */
 router.get("/", async (req, res) => {
   try {
-    const user = await requireAuth(req, res);
+    const user = await restoreUser(req, res);
 
     finishGetRequest(
       res,
       await Lanyard.findAll({
         where: {
-          authorId: user.id,
+          authorId: byUserOrSystem(user?.id),
         },
+        include: includeCardsAndTaggings,
       })
     );
   } catch (caught) {
@@ -104,9 +158,11 @@ router.get("/", async (req, res) => {
 
 router.get("/instance/:id", async (req, res) => {
   try {
-    const user = await requireAuth(req, res);
+    const user = await restoreUser(req, res);
 
-    const instance = await maybeGetLanyard(req, user.id);
+    const instance = await maybeGetLanyard(req.params.id, user?.id, {
+      include: includeCardsAndTaggings,
+    });
 
     finishGetRequest(res, instance);
   } catch (caught) {
@@ -121,13 +177,15 @@ router.patch("/instance/:id", async (req, res) => {
   try {
     const user = await requireAuth(req, res);
 
-    const instance = await maybeGetLanyard(req, user.id);
+    const instance = await maybeGetLanyard(req.params.id, user.id, {
+      include: includeCardsAndTaggings,
+    });
 
     await instance.update(getLanyardValues(req));
 
     finishPatchRequest(res, instance);
   } catch (caught) {
-    finishBadRequest(caught);
+    finishBadRequest(res, caught);
   }
 });
 
@@ -138,12 +196,12 @@ router.delete("/instance/:id", async (req, res) => {
   try {
     const user = await requireAuth(req, res);
 
-    const instance = await maybeGetLanyard(req, user.id);
+    const instance = await maybeGetLanyard(req.params.id, user.id);
 
     await instance.destroy();
 
     finishDeleteRequest(res);
   } catch (caught) {
-    finishBadRequest(caught);
+    finishBadRequest(res, caught);
   }
 });
