@@ -15,6 +15,8 @@ import { FlexRow } from "../../components/FlexRow";
 import { Modal } from "../../components/Modal";
 import { H2 } from "../../components/Text";
 import { ErrorList } from "../../components/ErrorList";
+import { PageContent } from "../../components/PageContent";
+import { EditTagging } from "../Tags";
 
 export function IconsPage({ showSystemAssets }) {
   const {
@@ -22,21 +24,23 @@ export function IconsPage({ showSystemAssets }) {
     selected,
     selectedForEdit,
     selectItemForEdit,
+    selectedForTagging,
+    selectItemForTagging,
     resetSelections,
     selectItem,
     deselectItem,
     newFlow,
     editFlow,
+    taggingFlow,
     filterControls,
   } = useIconList(showSystemAssets.checked);
 
+  const { session } = useSession();
+
   return (
-    <FlexCol align="center">
+    <PageContent>
       <TopBar showSystemAssets={showSystemAssets}>
-        <FlexRow gap={0.5}>
-          <Button onClick={newFlow.toggle}>Create New</Button>
-          <Button disabled={!selected.length}>Add Tag</Button>
-        </FlexRow>
+        {!!session && <Button onClick={newFlow.toggle}>Create New</Button>}
         <Filters {...filterControls} />
         <Button disabled={!selected.length} onClick={resetSelections}>
           Deselect All
@@ -44,11 +48,13 @@ export function IconsPage({ showSystemAssets }) {
       </TopBar>
       <IconGrid
         allowEdits
+        allowTagging
         items={items}
         selected={selected}
         selectItem={selectItem}
         deselectItem={deselectItem}
         selectItemForEdit={selectItemForEdit}
+        selectItemForTagging={selectItemForTagging}
       />
       <Modal {...newFlow}>
         {!!newFlow.show && (
@@ -67,7 +73,16 @@ export function IconsPage({ showSystemAssets }) {
           />
         )}
       </Modal>
-    </FlexCol>
+      <Modal {...taggingFlow}>
+        {!!taggingFlow.show && (
+          <EditTagging
+            kind="icons"
+            id={selectedForTagging}
+            close={taggingFlow.toggle}
+          />
+        )}
+      </Modal>
+    </PageContent>
   );
 }
 
@@ -80,10 +95,15 @@ export function IconGrid({
   selectItem,
   deselectItem,
   selectItemForEdit,
+  selectItemForTagging,
   allowEdits,
+  allowTagging,
   ...props
 }) {
   const { session } = useSession();
+
+  allowEdits = !!session && !!allowEdits;
+  allowTagging = !!session && !!allowTagging;
 
   return (
     <Grid col={col} colGap={colGap} rowGap={rowGap} {...props}>
@@ -124,16 +144,26 @@ export function IconGrid({
                 color: "light",
               }}
             />
-            {!!isMine && !!allowEdits && (
-              <Button
-                margin={{
-                  bottom: 0.25,
-                }}
-                onClick={() => selectItemForEdit(id)}
-              >
-                edit
-              </Button>
-            )}
+            <FlexCol
+              gap={0.25}
+              padding={{
+                bottom: allowEdits || allowTagging ? 0.25 : 0,
+              }}
+            >
+              {!!isMine && !!allowEdits && (
+                <Button
+                  margin={{
+                    bottom: 0.25,
+                  }}
+                  onClick={() => selectItemForEdit(id)}
+                >
+                  edit
+                </Button>
+              )}
+              {!!allowTagging && (
+                <Button onClick={() => selectItemForTagging(id)}>tags</Button>
+              )}
+            </FlexCol>
           </Button>
         );
       })}
@@ -167,7 +197,7 @@ function CreateNewIcon({ close }) {
   );
 }
 
-function EditIcon({ id, showSystemAssets, close }) {
+function EditIcon({ id, close }) {
   const {
     errorList,
     isPending,
@@ -176,7 +206,7 @@ function EditIcon({ id, showSystemAssets, close }) {
     nameInput,
     imageUrlInput,
     dismissError,
-  } = useIconEditForm(id, showSystemAssets.checked, close);
+  } = useIconEditForm(id, close);
 
   return (
     <FlexCol minWidth={40} gap={2}>

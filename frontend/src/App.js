@@ -7,6 +7,7 @@ import { NotFound } from "./pages/NotFound";
 import { IconsPage } from "./pages/Icons";
 import { CardsPage } from "./pages/Cards";
 import { LanyardsPage } from "./pages/Lanyards";
+import { LanyardViewPage } from "./pages/LanyardView";
 import { TagsPage } from "./pages/Tags";
 
 function App() {
@@ -16,6 +17,9 @@ function App() {
     <Switch>
       <Route exact path="/">
         <HomePage />
+      </Route>
+      <Route path="/lanyards/:id/card/:index">
+        <LanyardViewPage showSystemAssets={showSystemAssets} />
       </Route>
       <Route path="/lanyards">
         <LanyardsPage showSystemAssets={showSystemAssets} />

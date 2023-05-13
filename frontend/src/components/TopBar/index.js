@@ -138,17 +138,25 @@ export function TopBar({ showSystemAssets, children }) {
   );
 }
 
-export function Filters({ tags, tagSelect, searchInput, searchButton }) {
+export function Filters({
+  hideTagSelect,
+  tags,
+  tagSelect,
+  searchInput,
+  searchButton,
+}) {
   return (
     <FlexRow gap={0.5}>
       <Button {...searchButton}>Search</Button>
       <Input placeholder="By name" {...searchInput} />
-      <DropDown
-        options={tags}
-        placeholder="all tags"
-        width={12}
-        {...tagSelect}
-      />
+      {!hideTagSelect && (
+        <DropDown
+          options={tags}
+          placeholder="all tags"
+          width={12}
+          {...tagSelect}
+        />
+      )}
     </FlexRow>
   );
 }

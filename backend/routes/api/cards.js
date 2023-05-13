@@ -1,6 +1,6 @@
 const express = require("express");
 const { Card } = require("../../db/models");
-const { requireAuth } = require("../../utils/auth");
+const { requireAuth, restoreUser } = require("../../utils/auth");
 const { includeTaggings, addTaggingRoutes } = require("../../utils/tagging");
 const { notAllowed, notFound } = require("../../utils/errors");
 const { inList, userCanViewItem, byUserOrSystem } = require("../../utils/misc");
@@ -22,7 +22,7 @@ module.exports = router;
 module.exports.maybeGetCard = maybeGetCard;
 module.exports.maybeGetManyCards = maybeGetManyCards;
 
-addTaggingRoutes(router, "cardId", maybeGetCard);
+addTaggingRoutes(router, "cardId", maybeGetCard, maybeGetManyCards);
 
 async function maybeGetCard(instanceId, userId, options = {}) {
   const instance = await Card.findByPk(instanceId, options);
@@ -86,7 +86,7 @@ router.post("/", async (req, res) => {
     });
 
     await instance.reload({
-      include: "icon",
+      include: includeIconAndTagging,
     });
 
     finishPostRequest(res, instance);
@@ -100,13 +100,13 @@ router.post("/", async (req, res) => {
  */
 router.get("/", async (req, res) => {
   try {
-    const user = await requireAuth(req, res);
+    const user = await restoreUser(req, res);
 
     finishGetRequest(
       res,
       await Card.findAll({
         where: {
-          authorId: byUserOrSystem(user.id),
+          authorId: byUserOrSystem(user?.id),
         },
         include: includeIconAndTagging,
       })
@@ -138,7 +138,7 @@ router.patch("/instance/:id", async (req, res) => {
     const user = await requireAuth(req, res);
 
     const instance = await maybeGetCard(req.params.id, user.id, {
-      include: includeTaggings,
+      include: includeIconAndTagging,
     });
 
     await instance.update(getCardValues(req));

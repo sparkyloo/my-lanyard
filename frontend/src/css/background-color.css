@@ -6,13 +6,14 @@
   background-color: transparent;
 }
 
-.filled-clear:hover:not(:disabled),
-.filled-clear:focus:not(:disabled) {
-  background-color: rgba(0,0,0,0.2);
+.filled-clear:hover:not(:disabled)
+/* ,.filled-clear:focus:not(:disabled) */
+{
+  background-color: rgba(0,0,0,0.1);
 }
 
 .filled-clear:active:not(:disabled) {
-  background-color: rgba(0,0,0,0.3);
+  background-color: rgba(0,0,0,0.2);
 }
 
 .filled-red {
@@ -24,8 +25,9 @@
   filter: grayscale(80%) brightness(20);
 }
 
-.filled-red:hover:not(:disabled),
-.filled-red:focus:not(:disabled) {
+.filled-red:hover:not(:disabled)
+/* ,.filled-red:focus:not(:disabled) */
+{
   background-color: #900;
 }
 
@@ -42,8 +44,9 @@
   filter: grayscale(80%) brightness(20);
 }
 
-.filled-green:hover:not(:disabled),
-.filled-green:focus:not(:disabled) {
+.filled-green:hover:not(:disabled)
+/* ,.filled-green:focus:not(:disabled) */
+{
   background-color: #090;
 }
 
@@ -60,8 +63,9 @@
   filter: grayscale(80%) brightness(20);
 }
 
-.filled-blue:hover:not(:disabled),
-.filled-blue:focus:not(:disabled) {
+.filled-blue:hover:not(:disabled)
+/* ,.filled-blue:focus:not(:disabled) */
+{
   background-color: #009;
 }
 
@@ -73,8 +77,9 @@
   accent-color: transparent;
 }
 
-.accented-clear:hover:not(:disabled),
-.accented-clear:focus:not(:disabled) {
+.accented-clear:hover:not(:disabled)
+/* ,.accented-clear:focus:not(:disabled) */
+{
   accent-color: rgba(0,0,0,0.2);
 }
 
@@ -90,8 +95,9 @@
   filter: grayscale(80%) brightness(20);
 }
 
-.accented-red:hover:not(:disabled),
-.accented-red:focus:not(:disabled) {
+.accented-red:hover:not(:disabled)
+/* ,.accented-red:focus:not(:disabled) */
+{
   accent-color: #900;
 }
 
@@ -107,8 +113,9 @@
   filter: grayscale(80%) brightness(20);
 }
 
-.accented-green:hover:not(:disabled),
-.accented-green:focus:not(:disabled) {
+.accented-green:hover:not(:disabled)
+/* ,.accented-green:focus:not(:disabled) */
+{
   accent-color: #090;
 }
 
@@ -124,8 +131,9 @@
   filter: grayscale(80%) brightness(20);
 }
 
-.accented-blue:hover:not(:disabled),
-.accented-blue:focus:not(:disabled) {
+.accented-blue:hover:not(:disabled)
+/* ,.accented-blue:focus:not(:disabled) */
+{
   accent-color: #009;
 }
 

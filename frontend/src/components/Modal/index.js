@@ -28,6 +28,7 @@ export function Modal({ show, toggle, children }) {
           y: 2,
           x: 4,
         }}
+        className="ModalContent"
       >
         {children}
       </FlexCol>

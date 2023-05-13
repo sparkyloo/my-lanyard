@@ -1,8 +1,8 @@
 const express = require("express");
 const { Tag } = require("../../db/models");
-const { requireAuth } = require("../../utils/auth");
+const { requireAuth, restoreUser } = require("../../utils/auth");
 const { notAllowed, notFound } = require("../../utils/errors");
-const { userCanViewItem, byUserOrSystem } = require("../../utils/misc");
+const { userCanViewItem, byUserOrSystem, inList } = require("../../utils/misc");
 const {
   createRequiredCheck,
   validateRequest,
@@ -18,6 +18,7 @@ const router = express.Router();
 module.exports = router;
 
 module.exports.maybeGetTag = maybeGetTag;
+module.exports.maybeGetManyTags = maybeGetManyTags;
 
 async function maybeGetTag(instanceId, userId, options = {}) {
   const instance = await Tag.findByPk(instanceId, options);
@@ -30,6 +31,28 @@ async function maybeGetTag(instanceId, userId, options = {}) {
     return instance;
   } else {
     throw notFound("Tag");
+  }
+}
+
+async function maybeGetManyTags(instanceIds, userId, options = {}) {
+  const instances = await Tag.findAll({
+    ...options,
+    where: {
+      id: inList(instanceIds),
+      authorId: byUserOrSystem(userId),
+    },
+  });
+
+  for (const instance of instances) {
+    if (!userCanViewItem(userId, instance.authorId)) {
+      throw notAllowed();
+    }
+  }
+
+  if (instances.length < instanceIds.length) {
+    throw notFound("Tag");
+  } else {
+    return instances;
   }
 }
 
@@ -71,13 +94,13 @@ router.post("/", async (req, res) => {
  */
 router.get("/", async (req, res) => {
   try {
-    const user = await requireAuth(req, res);
+    const user = await restoreUser(req, res);
 
     finishGetRequest(
       res,
       await Tag.findAll({
         where: {
-          authorId: byUserOrSystem(user.id),
+          authorId: byUserOrSystem(user?.id),
         },
       })
     );

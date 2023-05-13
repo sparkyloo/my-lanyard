@@ -9,12 +9,15 @@ import { Filters, TopBar } from "../../components/TopBar";
 import { Button } from "../../components/Button";
 import { Grid } from "../../components/Grid";
 import { Input } from "../../components/Input";
+import { Image } from "../../components/Image";
 import { FlexCol } from "../../components/FlexCol";
 import { FlexRow } from "../../components/FlexRow";
 import { Modal } from "../../components/Modal";
 import { H2, P } from "../../components/Text";
 import { ErrorList } from "../../components/ErrorList";
+import { PageContent } from "../../components/PageContent";
 import { CardGrid } from "../Cards";
+import { EditTagging } from "../Tags";
 
 export function LanyardsPage({ showSystemAssets }) {
   const {
@@ -22,21 +25,24 @@ export function LanyardsPage({ showSystemAssets }) {
     selected,
     selectedForEdit,
     selectItemForEdit,
+    selectedForTagging,
+    selectItemForTagging,
     resetSelections,
     selectItem,
     deselectItem,
     newFlow,
     editFlow,
+    taggingFlow,
     filterControls,
+    viewItem,
   } = useLanyardList(showSystemAssets.checked);
 
+  const { session } = useSession();
+
   return (
-    <FlexCol align="center">
+    <PageContent>
       <TopBar showSystemAssets={showSystemAssets}>
-        <FlexRow gap={0.5}>
-          <Button onClick={newFlow.toggle}>Create New</Button>
-          <Button disabled={!selected.length}>Add Tag</Button>
-        </FlexRow>
+        {!!session && <Button onClick={newFlow.toggle}>Create New</Button>}
         <Filters {...filterControls} />
         <Button disabled={!selected.length} onClick={resetSelections}>
           Deselect All
@@ -44,11 +50,14 @@ export function LanyardsPage({ showSystemAssets }) {
       </TopBar>
       <LanyardGrid
         allowEdits
+        allowTagging
         items={items}
         selected={selected}
         selectItem={selectItem}
         deselectItem={deselectItem}
+        viewItem={viewItem}
         selectItemForEdit={selectItemForEdit}
+        selectItemForTagging={selectItemForTagging}
       />
       <Modal {...newFlow}>
         {!!newFlow.show && (
@@ -67,12 +76,21 @@ export function LanyardsPage({ showSystemAssets }) {
           />
         )}
       </Modal>
-    </FlexCol>
+      <Modal {...taggingFlow}>
+        {!!taggingFlow.show && (
+          <EditTagging
+            kind="lanyards"
+            id={selectedForTagging}
+            close={taggingFlow.toggle}
+          />
+        )}
+      </Modal>
+    </PageContent>
   );
 }
 
 export function LanyardGrid({
-  col = 5,
+  col = 4,
   colGap = 2,
   rowGap = 4,
   items = [],
@@ -80,26 +98,33 @@ export function LanyardGrid({
   selectItem,
   deselectItem,
   selectItemForEdit,
+  selectItemForTagging,
   allowEdits,
+  allowTagging,
+  viewItem,
   ...props
 }) {
   const { session } = useSession();
 
+  allowEdits = !!session && !!allowEdits;
+  allowTagging = !!session && !!allowTagging;
+
   return (
     <Grid col={col} colGap={colGap} rowGap={rowGap} {...props}>
-      {items.map(({ id, authorId, name, icon }) => {
+      {items.map(({ id, authorId, name, cards }) => {
         const isSelected = selected.includes(`${id}`);
         const isMine = session?.id === authorId;
 
         return (
           <Button
             key={id}
-            variant="plain"
             rounded
+            variant="plain"
             display="flex"
             direction="column"
             align="center"
-            gap={0.5}
+            gap={1}
+            padding={{ y: 1, x: 1 }}
             border={{
               all: true,
               color: isSelected ? "blue" : "light",
@@ -113,41 +138,63 @@ export function LanyardGrid({
               }
             }}
           >
-            {/* <Image
-              key={name}
-              alt={name}
-              src={icon.imageUrl}
-              width={12}
-              height={12}
-              border={{
-                bottom: 1,
-                color: "light",
-              }}
-            /> */}
+            <div className="CardDisplay">
+              {cards.slice(0, 5).map((card, i) => (
+                <Image
+                  className={`CardPreview CardPreview_${i}`}
+                  key={card.name}
+                  alt={card.name}
+                  src={card.icon.imageUrl}
+                  width={16}
+                  height={16}
+                  border={{
+                    bottom: 1,
+                    color: "light",
+                  }}
+                />
+              ))}
+            </div>
             <P
               key={name}
               rounded
+              width="full"
+              bg="white"
               border={{
                 all: true,
                 color: "light",
               }}
               padding={{
-                x: 1,
-                y: 1,
+                x: 0.5,
+                y: 0.5,
               }}
             >
               {name}
             </P>
-            {!!isMine && !!allowEdits && (
-              <Button
-                margin={{
-                  bottom: 0.25,
-                }}
-                onClick={() => selectItemForEdit(id)}
-              >
-                edit
-              </Button>
-            )}
+            <FlexCol gap={0.5}>
+              <FlexRow gap={0.5}>
+                <Button
+                  margin={{
+                    bottom: 0.25,
+                  }}
+                  onClick={() => viewItem(id)}
+                >
+                  view
+                </Button>
+                {!!isMine && !!allowEdits && (
+                  <Button
+                    margin={{
+                      bottom: 0.25,
+                    }}
+                    onClick={() => selectItemForEdit(id)}
+                  >
+                    edit
+                  </Button>
+                )}
+              </FlexRow>
+              {!!allowTagging && (
+                <Button onClick={() => selectItemForTagging(id)}>tags</Button>
+              )}
+            </FlexCol>
           </Button>
         );
       })}

@@ -2,14 +2,17 @@ import { combineReducers } from "redux";
 import { csrfFetch } from "../csrf";
 import { handleApiErrors, DISMISS_ERRORS } from "./utils/errors";
 import { createItemsReducer, createStatusReducer } from "./utils/items";
-import { createSelectionReducer } from "./utils/selection";
+import { DESELECT_ALL, createSelectionReducer } from "./utils/selection";
 import { items as tagItemsReducer } from "./tags";
 
 export const status = createStatusReducer("card-loading");
 export const items = createItemsReducer("card-data");
 export const errors = createItemsReducer("card-errors", DISMISS_ERRORS);
 export const assignment = createItemsReducer("card-assignment");
-export const selections = createSelectionReducer("card-selections");
+export const selections = createSelectionReducer(
+  "card-selections",
+  DESELECT_ALL
+);
 
 export function fetchItem(id) {
   return async (dispatch) => {
@@ -18,19 +21,16 @@ export function fetchItem(id) {
 
       const response = await csrfFetch(`/api/cards/instance/${id}`);
 
-      const { taggings, ...instance } = await response.json();
+      const instance = await response.json();
       const taggingItems = [];
-      const tagItems = [];
 
       dispatch(items.trackItem(instance));
 
-      for (const { tag, ...tagging } of taggings) {
+      for (const { tag, ...tagging } of instance.taggings) {
         taggingItems.push(tagging);
-        tagItems.push(tag);
       }
 
       dispatch(assignment.trackItems(taggingItems));
-      dispatch(tagItemsReducer.trackItems(tagItems));
     } catch (caught) {
       await handleApiErrors(caught, dispatch, errors);
     } finally {
@@ -46,7 +46,19 @@ export function fetchItems() {
 
       const response = await csrfFetch(`/api/cards`);
 
-      dispatch(items.trackItems(await response.json()));
+      const dataItems = [];
+      const taggingItems = [];
+
+      for (const instance of await response.json()) {
+        dataItems.push(instance);
+
+        for (const { tag, ...tagging } of instance.taggings) {
+          taggingItems.push(tagging);
+        }
+      }
+
+      dispatch(items.trackItems(dataItems));
+      dispatch(assignment.trackItems(taggingItems));
     } catch (caught) {
       await handleApiErrors(caught, dispatch, errors);
     } finally {
@@ -55,7 +67,7 @@ export function fetchItems() {
   };
 }
 
-export function createItem(name, iconId) {
+export function createItem(text, iconId) {
   return async (dispatch) => {
     try {
       dispatch(status.pending());
@@ -63,7 +75,7 @@ export function createItem(name, iconId) {
       const response = await csrfFetch(`/api/cards`, {
         method: "POST",
         body: {
-          name,
+          text,
           iconId,
         },
       });
@@ -95,7 +107,7 @@ export function deleteItem(id) {
   };
 }
 
-export function updateItem(id, name, iconId) {
+export function updateItem(id, text, iconId) {
   return async (dispatch) => {
     try {
       dispatch(status.pending());
@@ -103,7 +115,7 @@ export function updateItem(id, name, iconId) {
       const response = await csrfFetch(`/api/cards/instance/${id}`, {
         method: "PATCH",
         body: {
-          name,
+          text,
           iconId,
         },
       });
@@ -129,6 +141,29 @@ export function updateItem(id, name, iconId) {
   };
 }
 
+export function updateTagging(instanceId, toAdd, toRemove) {
+  return async (dispatch) => {
+    try {
+      dispatch(status.pending());
+
+      await csrfFetch(`/api/cards/tagging`, {
+        method: "POST",
+        body: {
+          instanceId,
+          toAdd,
+          toRemove,
+        },
+      });
+
+      await dispatch(fetchItem(instanceId));
+    } catch (caught) {
+      await handleApiErrors(caught, dispatch, errors);
+    } finally {
+      dispatch(status.finished());
+    }
+  };
+}
+
 export default combineReducers({
   status,
   items,
@@ -136,6 +171,10 @@ export default combineReducers({
   assignment,
   selections,
 });
+
+export function getItem(id) {
+  return ({ cards }) => cards.items[id];
+}
 
 export function getItems(includeSystemCards) {
   return ({ cards }) =>
@@ -150,4 +189,8 @@ export function getErrors({ cards }) {
 
 export function getSelected({ cards }) {
   return Object.keys(cards.selections);
+}
+
+export function getAssignment({ cards }) {
+  return Object.keys(cards.assignment);
 }

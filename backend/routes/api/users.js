@@ -22,13 +22,13 @@ const checkSignupLastName = createRequiredCheck(
 
 const checkSignupEmail = createMultipleChecks(
   "Email",
-  (body) => body.firstName,
+  (body) => body.email,
   (check) => [check.exists(), check.isEmail()]
 );
 
 const checkSignupPassword = createMultipleChecks(
   "Password",
-  (body) => body.firstName,
+  (body) => body.password,
   (check) => [check.exists(), check.lengthIsGte(6)]
 );
 

@@ -14,9 +14,11 @@ import { Input } from "../../components/Input";
 import { FlexCol } from "../../components/FlexCol";
 import { FlexRow } from "../../components/FlexRow";
 import { Modal } from "../../components/Modal";
-import { H2 } from "../../components/Text";
+import { H2, P } from "../../components/Text";
 import { ErrorList } from "../../components/ErrorList";
+import { PageContent } from "../../components/PageContent";
 import { IconGrid } from "../Icons";
+import { EditTagging } from "../Tags";
 
 export function CardsPage({ showSystemAssets }) {
   const {
@@ -24,21 +26,23 @@ export function CardsPage({ showSystemAssets }) {
     selected,
     selectedForEdit,
     selectItemForEdit,
+    selectedForTagging,
+    selectItemForTagging,
     resetSelections,
     selectItem,
     deselectItem,
     newFlow,
     editFlow,
+    taggingFlow,
     filterControls,
   } = useCardList(showSystemAssets.checked);
 
+  const { session } = useSession();
+
   return (
-    <FlexCol align="center">
+    <PageContent>
       <TopBar showSystemAssets={showSystemAssets}>
-        <FlexRow gap={0.5}>
-          <Button onClick={newFlow.toggle}>Create New</Button>
-          <Button disabled={!selected.length}>Add Tag</Button>
-        </FlexRow>
+        {!!session && <Button onClick={newFlow.toggle}>Create New</Button>}
         <Filters {...filterControls} />
         <Button disabled={!selected.length} onClick={resetSelections}>
           Deselect All
@@ -46,11 +50,13 @@ export function CardsPage({ showSystemAssets }) {
       </TopBar>
       <CardGrid
         allowEdits
+        allowTagging
         items={items}
         selected={selected}
         selectItem={selectItem}
         deselectItem={deselectItem}
         selectItemForEdit={selectItemForEdit}
+        selectItemForTagging={selectItemForTagging}
       />
       <Modal {...newFlow}>
         {!!newFlow.show && (
@@ -69,7 +75,16 @@ export function CardsPage({ showSystemAssets }) {
           />
         )}
       </Modal>
-    </FlexCol>
+      <Modal {...taggingFlow}>
+        {!!taggingFlow.show && (
+          <EditTagging
+            kind="cards"
+            id={selectedForTagging}
+            close={taggingFlow.toggle}
+          />
+        )}
+      </Modal>
+    </PageContent>
   );
 }
 
@@ -82,14 +97,19 @@ export function CardGrid({
   selectItem,
   deselectItem,
   selectItemForEdit,
+  selectItemForTagging,
   allowEdits,
+  allowTagging,
   ...props
 }) {
   const { session } = useSession();
 
+  allowEdits = !!session && !!allowEdits;
+  allowTagging = !!session && !!allowTagging;
+
   return (
     <Grid col={col} colGap={colGap} rowGap={rowGap} {...props}>
-      {items.map(({ id, authorId, name, icon }) => {
+      {items.map(({ id, authorId, text, icon }) => {
         const isSelected = selected.includes(`${id}`);
         const isMine = session?.id === authorId;
 
@@ -116,8 +136,8 @@ export function CardGrid({
             }}
           >
             <Image
-              key={name}
-              alt={name}
+              key={text}
+              alt={text}
               src={icon.imageUrl}
               width={12}
               height={12}
@@ -126,16 +146,38 @@ export function CardGrid({
                 color: "light",
               }}
             />
-            {!!isMine && !!allowEdits && (
-              <Button
-                margin={{
-                  bottom: 0.25,
-                }}
-                onClick={() => selectItemForEdit(id)}
-              >
-                edit
-              </Button>
-            )}
+            <P
+              key={text}
+              rounded
+              width="full"
+              bg="white"
+              padding={{
+                x: 0.5,
+                y: 0.5,
+              }}
+            >
+              {text}
+            </P>
+            <FlexCol
+              gap={0.25}
+              padding={{
+                bottom: 0.25,
+              }}
+            >
+              {!!isMine && !!allowEdits && (
+                <Button
+                  margin={{
+                    bottom: 0.25,
+                  }}
+                  onClick={() => selectItemForEdit(id)}
+                >
+                  edit
+                </Button>
+              )}
+              {!!allowTagging && (
+                <Button onClick={() => selectItemForTagging(id)}>tags</Button>
+              )}
+            </FlexCol>
           </Button>
         );
       })}

@@ -2,12 +2,15 @@ import { combineReducers } from "redux";
 import { csrfFetch } from "../csrf";
 import { handleApiErrors, DISMISS_ERRORS } from "./utils/errors";
 import { createItemsReducer, createStatusReducer } from "./utils/items";
-import { createSelectionReducer } from "./utils/selection";
+import { DESELECT_ALL, createSelectionReducer } from "./utils/selection";
 
 export const status = createStatusReducer("tag-loading");
 export const items = createItemsReducer("tag-data");
 export const errors = createItemsReducer("tag-errors", DISMISS_ERRORS);
-export const selection = createSelectionReducer("tag-selection");
+export const selections = createSelectionReducer(
+  "tag-selections",
+  DESELECT_ALL
+);
 
 export function fetchItem(id) {
   return async (dispatch) => {
@@ -53,14 +56,13 @@ export function fetchItems() {
   };
 }
 
-export function createItem(name, imageUrl) {
+export function createItem(name) {
   return async (dispatch) => {
     try {
       const response = await csrfFetch(`/api/tags`, {
         method: "POST",
         body: {
           name,
-          imageUrl,
         },
       });
 
@@ -107,8 +109,12 @@ export default combineReducers({
   status,
   items,
   errors,
-  selection,
+  selections,
 });
+
+export function getItem(id) {
+  return ({ tags }) => tags.items[id];
+}
 
 export function getItems(includeSystemTags) {
   return ({ tags }) =>

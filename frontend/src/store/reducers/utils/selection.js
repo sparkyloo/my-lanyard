@@ -1,3 +1,12 @@
+export const DESELECT_ALL = "all-selections/reset";
+
+export function deselectAll() {
+  return {
+    type: DESELECT_ALL,
+    payload: null,
+  };
+}
+
 export function createSelectionReducer(prefix, OTHER_RESET) {
   const initialState = {};
 

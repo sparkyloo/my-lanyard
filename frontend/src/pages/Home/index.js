@@ -17,10 +17,11 @@ export function HomePage() {
           x: "auto",
         }}
       >
-        <H1>Page Not Found</H1>
-        <Link to="/">
-          <Span>return to home page</Span>
-        </Link>
+        <H1>Welcome to My Lanyard</H1>
+        <Span>
+          Sign up now for an account to create new items and use explore and use
+          the existing system assets.
+        </Span>
       </FlexCol>
     </>
   );

@@ -2,14 +2,17 @@ import { combineReducers } from "redux";
 import { csrfFetch } from "../csrf";
 import { handleApiErrors, DISMISS_ERRORS } from "./utils/errors";
 import { createItemsReducer, createStatusReducer } from "./utils/items";
-import { createSelectionReducer } from "./utils/selection";
+import { DESELECT_ALL, createSelectionReducer } from "./utils/selection";
 import { items as tagItemsReducer } from "./tags";
 
 export const status = createStatusReducer("lanyard-loading");
 export const items = createItemsReducer("lanyard-data");
 export const errors = createItemsReducer("lanyard-errors", DISMISS_ERRORS);
 export const assignment = createItemsReducer("lanyard-assignment");
-export const selections = createSelectionReducer("lanyard-selections");
+export const selections = createSelectionReducer(
+  "lanyard-selections",
+  DESELECT_ALL
+);
 
 export function fetchItem(id) {
   return async (dispatch) => {
@@ -18,19 +21,16 @@ export function fetchItem(id) {
 
       const response = await csrfFetch(`/api/lanyards/instance/${id}`);
 
-      const { taggings, ...instance } = await response.json();
+      const instance = await response.json();
       const taggingItems = [];
-      const tagItems = [];
 
       dispatch(items.trackItem(instance));
 
-      for (const { tag, ...tagging } of taggings) {
+      for (const { tag, ...tagging } of instance.taggings) {
         taggingItems.push(tagging);
-        tagItems.push(tag);
       }
 
       dispatch(assignment.trackItems(taggingItems));
-      dispatch(tagItemsReducer.trackItems(tagItems));
     } catch (caught) {
       await handleApiErrors(caught, dispatch, errors);
     } finally {
@@ -46,7 +46,19 @@ export function fetchItems() {
 
       const response = await csrfFetch(`/api/lanyards`);
 
-      dispatch(items.trackItems(await response.json()));
+      const dataItems = [];
+      const taggingItems = [];
+
+      for (const instance of await response.json()) {
+        dataItems.push(instance);
+
+        for (const { tag, ...tagging } of instance.taggings) {
+          taggingItems.push(tagging);
+        }
+      }
+
+      dispatch(items.trackItems(dataItems));
+      dispatch(assignment.trackItems(taggingItems));
     } catch (caught) {
       await handleApiErrors(caught, dispatch, errors);
     } finally {
@@ -131,6 +143,29 @@ export function updateItem(id, name, description, cardIds) {
   };
 }
 
+export function updateTagging(instanceId, toAdd, toRemove) {
+  return async (dispatch) => {
+    try {
+      dispatch(status.pending());
+
+      await csrfFetch(`/api/lanyards/tagging`, {
+        method: "POST",
+        body: {
+          instanceId,
+          toAdd,
+          toRemove,
+        },
+      });
+
+      await dispatch(fetchItem(instanceId));
+    } catch (caught) {
+      await handleApiErrors(caught, dispatch, errors);
+    } finally {
+      dispatch(status.finished());
+    }
+  };
+}
+
 export default combineReducers({
   status,
   items,
@@ -138,6 +173,10 @@ export default combineReducers({
   assignment,
   selections,
 });
+
+export function getItem(id) {
+  return ({ lanyards }) => lanyards.items[id];
+}
 
 export function getItems(includeSystemLanyards) {
   return ({ lanyards }) =>
@@ -152,4 +191,8 @@ export function getErrors({ lanyards }) {
 
 export function getSelected({ lanyards }) {
   return Object.keys(lanyards.selections);
+}
+
+export function getAssignment({ lanyards }) {
+  return Object.keys(lanyards.assignment);
 }

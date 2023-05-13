@@ -1,6 +1,6 @@
-import { useHistory } from "react-router-dom";
+import { useHistory, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useModal } from "./hooks/modal";
 import { useCheckbox } from "./hooks/checkbox";
 import { useFilters } from "./hooks/filters";
@@ -12,6 +12,7 @@ import * as cardState from "./store/reducers/cards";
 import * as iconState from "./store/reducers/icons";
 import * as lanyardState from "./store/reducers/lanyards";
 import * as tagState from "./store/reducers/tags";
+import { deselectAll } from "./store/reducers/utils/selection";
 
 export function useSession() {
   const dispatch = useDispatch();
@@ -45,6 +46,7 @@ export function useAppState() {
   useEffect(() => {
     return history.listen(() => {
       dispatch(dismissErrors());
+      dispatch(deselectAll());
     });
   }, [history, dispatch]);
 
@@ -65,9 +67,11 @@ function useReduxList(topic, includeSystemAssets) {
   const selected = useSelector(topic.getSelected);
 
   const [selectedForEdit, selectItemForEdit] = useState(null);
+  const [selectedForTagging, selectItemForTagging] = useState(null);
 
   const newFlow = useModal();
   const editFlow = useModal();
+  const taggingFlow = useModal();
 
   useEffect(() => {
     if (selectedForEdit) {
@@ -80,6 +84,18 @@ function useReduxList(topic, includeSystemAssets) {
       selectItemForEdit(null);
     }
   }, [editFlow.show]);
+
+  useEffect(() => {
+    if (selectedForTagging) {
+      taggingFlow.forceModalState(true);
+    }
+  }, [selectedForTagging]);
+
+  useEffect(() => {
+    if (!taggingFlow.show) {
+      selectItemForTagging(null);
+    }
+  }, [taggingFlow.show]);
 
   const resetSelections = useCallback(() => {
     dispatch(topic.selections.reset());
@@ -98,8 +114,11 @@ function useReduxList(topic, includeSystemAssets) {
     selected,
     selectedForEdit,
     selectItemForEdit,
+    selectedForTagging,
+    selectItemForTagging,
     newFlow,
     editFlow,
+    taggingFlow,
     resetSelections,
     selectItem,
     deselectItem,
@@ -234,10 +253,10 @@ export function useIconCreationForm(close) {
   };
 }
 
-export function useIconEditForm(id, includeSystemAssets, close) {
+export function useIconEditForm(id, close) {
   const dispatch = useDispatch();
   const errorList = useSelector(iconState.getErrors);
-  const icon = useSelector(iconState.getItems(includeSystemAssets))[id];
+  const icon = useSelector(iconState.getItem(id));
 
   const dismissError = useCallback((errId) => {
     dispatch(iconState.errors.untrackItem(errId));
@@ -333,7 +352,7 @@ export function useCardEditForm(id, includeSystemAssets, close) {
   const dispatch = useDispatch();
   const iconList = useLimitedIconList(includeSystemAssets);
   const errorList = useSelector(cardState.getErrors);
-  const card = useSelector(cardState.getItems(includeSystemAssets))[id];
+  const card = useSelector(cardState.getItem(id));
 
   const dismissError = useCallback((errId) => {
     dispatch(cardState.errors.untrackItem(errId));
@@ -372,14 +391,74 @@ export function useCardEditForm(id, includeSystemAssets, close) {
   };
 }
 
+export function useLanyard() {
+  const { id, index } = useParams();
+  const history = useHistory();
+  const dispatch = useDispatch();
+
+  useEffect(() => {
+    dispatch(lanyardState.fetchItems());
+  }, []);
+
+  const lanyard = useSelector(lanyardState.getItem(id));
+  const cards = lanyard?.cards || [];
+
+  const i = useMemo(() => {
+    return parseInt(index);
+  }, [index]);
+
+  const card = useMemo(() => cards[i], [cards, i]);
+
+  console.log({
+    cards,
+    card,
+    i,
+  });
+
+  const gotoPrev = useCallback(() => {
+    let prev = i - 1;
+
+    if (prev < 0) {
+      prev = cards.length - 1;
+    }
+
+    history.push(`/lanyards/${id}/card/${prev}`);
+  }, [id, i, cards]);
+
+  const gotoNext = useCallback(() => {
+    let next = i + 1;
+
+    if (next >= cards.length) {
+      next = 0;
+    }
+
+    history.push(`/lanyards/${id}/card/${next}`);
+  }, [id, i, cards]);
+
+  return {
+    card,
+    gotoPrev,
+    gotoNext,
+  };
+}
+
 export function useLanyardList(includeSystemAssets) {
+  const history = useHistory();
   const { items, ...rest } = useReduxList(lanyardState, includeSystemAssets);
   const { filtered, filterControls } = useFilters(items, includeSystemAssets);
+
+  const viewItem = useCallback(
+    (id) => {
+      history.push(`/lanyards/${id}/card/0`);
+    },
+    [history]
+  );
 
   return {
     ...rest,
     items: filtered,
     filterControls,
+    viewItem,
   };
 }
 
@@ -400,8 +479,8 @@ export function useLimitedLanyardList(includeSystemAssets) {
 
 export function useLanyardCreationForm(includeSystemAssets, close) {
   const dispatch = useDispatch();
-  const cardList = useLimitedCardList(includeSystemAssets);
-  const errorList = useSelector(iconState.getErrors);
+  const cardList = useCardList(includeSystemAssets);
+  const errorList = useSelector(lanyardState.getErrors);
 
   const dismissError = useCallback((errId) => {
     dispatch(lanyardState.errors.untrackItem(errId));
@@ -436,7 +515,7 @@ export function useLanyardEditForm(id, includeSystemAssets, close) {
   const dispatch = useDispatch();
   const cardList = useLimitedCardList(includeSystemAssets);
   const errorList = useSelector(lanyardState.getErrors);
-  const lanyard = useSelector(lanyardState.getItems(includeSystemAssets))[id];
+  const lanyard = useSelector(lanyardState.getItem(id));
 
   const dismissError = useCallback((errId) => {
     dispatch(lanyardState.errors.untrackItem(errId));
@@ -502,5 +581,160 @@ export function useLimitedTagList(includeSystemAssets) {
     ...rest,
     items: filtered,
     filterControls,
+  };
+}
+
+export function useTagCreationForm(close) {
+  const dispatch = useDispatch();
+  const errorList = useSelector(tagState.getErrors);
+
+  const dismissError = useCallback((errId) => {
+    dispatch(tagState.errors.untrackItem(errId));
+  }, []);
+
+  const nameInput = useInput("");
+
+  const { isPending, submitButton } = useForm(async () => {
+    await dispatch(tagState.createItem(nameInput.value));
+    close();
+  });
+
+  return {
+    errorList,
+    isPending,
+    nameInput,
+    submitButton,
+    dismissError,
+  };
+}
+
+export function useTagEditForm(id, close) {
+  const dispatch = useDispatch();
+  const errorList = useSelector(tagState.getErrors);
+  const tag = useSelector(tagState.getItem(id));
+
+  const dismissError = useCallback((errId) => {
+    dispatch(tagState.errors.untrackItem(errId));
+  }, []);
+
+  const nameInput = useInput(tag?.name || "");
+
+  const { isPending: savePending, submitButton: saveButton } = useForm(
+    async () => {
+      await dispatch(tagState.updateItem(id, nameInput.value));
+      close();
+    }
+  );
+
+  const { isPending: deletePending, submitButton: deleteButton } = useForm(
+    async () => {
+      await dispatch(tagState.deleteItem(id));
+      close();
+    }
+  );
+
+  const isPending = savePending || deletePending;
+
+  return {
+    errorList,
+    savePending,
+    deletePending,
+    isPending,
+    nameInput,
+    saveButton,
+    deleteButton,
+    dismissError,
+  };
+}
+
+export function useTaggingForm(kind, id, close) {
+  let getItem;
+  let updateTagging;
+  let getErrors;
+  let untrackError;
+
+  switch (kind) {
+    case "icons": {
+      getItem = iconState.getItem;
+      updateTagging = iconState.updateTagging;
+      getErrors = iconState.getErrors;
+      untrackError = iconState.errors.untrackItem;
+      break;
+    }
+    case "cards": {
+      getItem = cardState.getItem;
+      updateTagging = cardState.updateTagging;
+      getErrors = cardState.getErrors;
+      untrackError = cardState.errors.untrackItem;
+      break;
+    }
+    case "lanyards": {
+      getItem = lanyardState.getItem;
+      updateTagging = lanyardState.updateTagging;
+      getErrors = lanyardState.getErrors;
+      untrackError = lanyardState.errors.untrackItem;
+      break;
+    }
+    default: {
+      throw new Error(`Invalid tagging kind: "${kind}"`);
+    }
+  }
+
+  const dispatch = useDispatch();
+  const tagList = useTagList(false);
+  const errorList = useSelector(getErrors);
+  const selectedItem = useSelector(getItem(id));
+  const selectedTags = tagList.selected.map((id) =>
+    typeof id === "string" ? parseInt(id) : id
+  );
+  const assignments = useMemo(
+    () =>
+      selectedItem.taggings.map(({ tagId }) =>
+        typeof tagId === "string" ? parseInt(tagId) : tagId
+      ),
+    [selectedItem]
+  );
+
+  useEffect(() => {
+    for (const { tagId } of selectedItem.taggings) {
+      dispatch(tagState.selections.pick(tagId));
+    }
+
+    return () => {
+      dispatch(tagState.selections.reset());
+    };
+  }, []);
+
+  const dismissError = useCallback((errId) => {
+    dispatch(untrackError(errId));
+  }, []);
+
+  const { isPending, submitButton: saveButton } = useForm(async () => {
+    const toAdd = new Set();
+    const toRemove = new Set();
+
+    for (const id of selectedTags) {
+      if (!assignments.includes(id)) {
+        toAdd.add(id);
+      }
+    }
+
+    for (const id of assignments) {
+      if (!selectedTags.includes(id)) {
+        toRemove.add(id);
+      }
+    }
+
+    await dispatch(updateTagging(id, Array.from(toAdd), Array.from(toRemove)));
+
+    close();
+  });
+
+  return {
+    tagList,
+    errorList,
+    isPending,
+    saveButton,
+    dismissError,
   };
 }

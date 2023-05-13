@@ -1,9 +1,9 @@
 const express = require("express");
 const { Icon } = require("../../db/models");
-const { requireAuth } = require("../../utils/auth");
+const { requireAuth, restoreUser } = require("../../utils/auth");
 const { includeTaggings, addTaggingRoutes } = require("../../utils/tagging");
 const { notAllowed, notFound } = require("../../utils/errors");
-const { userCanViewItem, byUserOrSystem } = require("../../utils/misc");
+const { userCanViewItem, byUserOrSystem, inList } = require("../../utils/misc");
 const {
   validateRequest,
   finishBadRequest,
@@ -15,14 +15,16 @@ const {
   createMultipleChecks,
   createUrlCheck,
 } = require("../../utils/validation");
+const { Op } = require("sequelize");
 
 const router = express.Router();
 
 module.exports = router;
 
 module.exports.maybeGetIcon = maybeGetIcon;
+module.exports.maybeGetManyIcons = maybeGetManyIcons;
 
-addTaggingRoutes(router, "iconId", maybeGetIcon);
+addTaggingRoutes(router, "iconId", maybeGetIcon, maybeGetManyIcons);
 
 async function maybeGetIcon(instanceId, userId, options = {}) {
   const instance = await Icon.findByPk(instanceId, options);
@@ -35,6 +37,28 @@ async function maybeGetIcon(instanceId, userId, options = {}) {
     return instance;
   } else {
     throw notFound("Icon");
+  }
+}
+
+async function maybeGetManyIcons(instanceIds, userId, options = {}) {
+  const instances = await Icon.findAll({
+    ...options,
+    where: {
+      id: inList(instanceIds),
+      authorId: byUserOrSystem(userId),
+    },
+  });
+
+  for (const instance of instances) {
+    if (!userCanViewItem(userId, instance.authorId)) {
+      throw notAllowed();
+    }
+  }
+
+  if (instances.length < instanceIds.length) {
+    throw notFound("Icon");
+  } else {
+    return instances;
   }
 }
 
@@ -92,15 +116,15 @@ router.post("/", async (req, res) => {
  */
 router.get("/", async (req, res) => {
   try {
-    const user = await requireAuth(req, res);
+    const user = await restoreUser(req, res);
 
     finishGetRequest(
       res,
       await Icon.findAll({
         where: {
-          authorId: byUserOrSystem(user.id),
+          authorId: byUserOrSystem(user?.id),
         },
-        include: "taggings",
+        include: includeTaggings,
       })
     );
   } catch (caught) {

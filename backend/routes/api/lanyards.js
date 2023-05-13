@@ -1,9 +1,9 @@
 const express = require("express");
-const { Lanyard } = require("../../db/models");
-const { requireAuth } = require("../../utils/auth");
+const { Lanyard, Tagging, Card, Icon } = require("../../db/models");
+const { requireAuth, restoreUser } = require("../../utils/auth");
 const { includeTaggings, addTaggingRoutes } = require("../../utils/tagging");
 const { notAllowed, notFound } = require("../../utils/errors");
-const { userCanViewItem, byUserOrSystem } = require("../../utils/misc");
+const { userCanViewItem, byUserOrSystem, inList } = require("../../utils/misc");
 const {
   validateRequest,
   finishBadRequest,
@@ -20,20 +20,59 @@ const router = express.Router();
 module.exports = router;
 
 module.exports.maybeGetLanyard = maybeGetLanyard;
+module.exports.maybeGetManyLanyards = maybeGetManyLanyards;
 
-addTaggingRoutes(router, "lanyardId", maybeGetLanyard);
+addTaggingRoutes(router, "lanyardId", maybeGetLanyard, maybeGetManyLanyards);
+
+const includeCards = {
+  as: "cards",
+  model: Card,
+  include: [
+    {
+      as: "icon",
+      model: Icon,
+    },
+  ],
+};
+
+const includeCardsAndTaggings = [includeTaggings, includeCards];
 
 async function maybeGetLanyard(instanceId, userId, options = {}) {
   const instance = await Lanyard.findByPk(instanceId, options);
 
   if (instance) {
-    if (!userCanViewItem(userId, instance.authorId)) {
+    if (
+      typeof userId !== "undefined" &&
+      !userCanViewItem(userId, instance.authorId)
+    ) {
       throw notAllowed();
     }
 
     return instance;
   } else {
     throw notFound("Lanyard");
+  }
+}
+
+async function maybeGetManyLanyards(instanceIds, userId, options = {}) {
+  const instances = await Lanyard.findAll({
+    ...options,
+    where: {
+      id: inList(instanceIds),
+      authorId: byUserOrSystem(userId),
+    },
+  });
+
+  for (const instance of instances) {
+    if (!userCanViewItem(userId, instance.authorId)) {
+      throw notAllowed();
+    }
+  }
+
+  if (instances.length < instanceIds.length) {
+    throw notFound("Lanyard");
+  } else {
+    return instances;
   }
 }
 
@@ -87,7 +126,7 @@ router.post("/", async (req, res) => {
     await instance.addCards(cards);
 
     await instance.reload({
-      include: "cards",
+      include: includeCardsAndTaggings,
     });
 
     finishPostRequest(res, instance);
@@ -101,15 +140,15 @@ router.post("/", async (req, res) => {
  */
 router.get("/", async (req, res) => {
   try {
-    const user = await requireAuth(req, res);
+    const user = await restoreUser(req, res);
 
     finishGetRequest(
       res,
       await Lanyard.findAll({
         where: {
-          authorId: byUserOrSystem(user.id),
+          authorId: byUserOrSystem(user?.id),
         },
-        include: ["taggings", "cards"],
+        include: includeCardsAndTaggings,
       })
     );
   } catch (caught) {
@@ -119,10 +158,10 @@ router.get("/", async (req, res) => {
 
 router.get("/instance/:id", async (req, res) => {
   try {
-    const user = await requireAuth(req, res);
+    const user = await restoreUser(req, res);
 
-    const instance = await maybeGetLanyard(req.params.id, user.id, {
-      include: includeTaggings,
+    const instance = await maybeGetLanyard(req.params.id, user?.id, {
+      include: includeCardsAndTaggings,
     });
 
     finishGetRequest(res, instance);
@@ -139,7 +178,7 @@ router.patch("/instance/:id", async (req, res) => {
     const user = await requireAuth(req, res);
 
     const instance = await maybeGetLanyard(req.params.id, user.id, {
-      include: includeTaggings,
+      include: includeCardsAndTaggings,
     });
 
     await instance.update(getLanyardValues(req));

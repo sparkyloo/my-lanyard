@@ -20,7 +20,7 @@ function inList(list) {
 
 function byUserOrSystem(userId) {
   return {
-    [Op.or]: [systemAuthorId, userId],
+    [Op.or]: [systemAuthorId, userId].filter(Boolean),
   };
 }
 

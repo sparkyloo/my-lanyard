@@ -9,16 +9,28 @@ import { FlexRow } from "../../components/FlexRow";
 import { H1, Span } from "../../components/Text";
 import { Input } from "../../components/Input";
 import { Button } from "../../components/Button";
+import { ErrorList } from "../../components/ErrorList";
+import { useAuthErrors } from "../../state";
+import * as authState from "../../store/reducers/auth";
+import { useCallback } from "react";
+import { useDispatch } from "react-redux";
 
 export function SignupPage() {
   const history = useHistory();
 
-  const [first] = useInput("");
-  const [last] = useInput("");
-  const [email] = useInput("");
-  const [password] = useInput("");
+  const first = useInput("");
+  const last = useInput("");
+  const email = useInput("");
+  const password = useInput("");
+  const dispatch = useDispatch();
 
-  const [button, isPending] = useForm(async (dispatch) => {
+  const errorList = useAuthErrors();
+
+  const dismissError = useCallback((errId) => {
+    dispatch(authState.errors.untrackItem(errId));
+  }, []);
+
+  const { submitButton, isPending } = useForm(async (dispatch) => {
     await dispatch(
       createNewUser(email.value, password.value, first.value, last.value)
     );
@@ -64,7 +76,7 @@ export function SignupPage() {
           />
         </FlexCol>
         <FlexCol gap={1.5} align="end">
-          <Button {...button} disabled={isPending} width="full">
+          <Button {...submitButton} disabled={isPending} width="full">
             Submit
           </Button>
           <FlexRow gap={0.5} fontSize={4} fontWeight={1}>
@@ -72,6 +84,7 @@ export function SignupPage() {
             <Link to="/login">Click here</Link>
           </FlexRow>
         </FlexCol>
+        <ErrorList errors={errorList} dismissError={dismissError} />
       </FlexCol>
     </>
   );

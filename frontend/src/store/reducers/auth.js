@@ -86,6 +86,8 @@ export function startDemoSession() {
       });
 
       dispatch(trackSession(await response.json()));
+
+      window.location.pathname = "/lanyards";
     } catch (caught) {
       await handleApiErrors(caught, dispatch, errors);
     }
@@ -100,6 +102,8 @@ export function destroySession() {
       });
 
       dispatch(untrackSession());
+
+      window.location.pathname = "/";
     } catch (caught) {
       await handleApiErrors(caught, dispatch, errors);
     }
@@ -166,5 +170,5 @@ export function getSession({ auth }) {
 }
 
 export function getErrors({ auth }) {
-  return auth.errors;
+  return Object.values(auth.errors);
 }

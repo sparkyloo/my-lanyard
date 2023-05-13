@@ -1,3 +1,7 @@
+export function joinClassNames(...classNames) {
+  return classNames.join(" ");
+}
+
 export function prepareStyles(props, ...extraClassNames) {
   let {
     className,

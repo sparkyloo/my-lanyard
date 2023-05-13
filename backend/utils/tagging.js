@@ -1,6 +1,6 @@
 const { Tagging } = require("../db/models");
 const { requireAuth } = require("../utils/auth");
-const { maybeGetTag } = require("../routes/api/tags");
+const { maybeGetManyTags } = require("../routes/api/tags");
 const { notAllowed, notFound } = require("../utils/errors");
 const {
   createRequiredCheck,
@@ -39,36 +39,67 @@ async function maybeGetTagging(tagId, userId) {
   }
 }
 
+const checkTaggingTagIdsToAddExists = createRequiredCheck(
+  "Tag IDs to add",
+  (body) => body.toAdd
+);
+
+const checkTaggingTagIdsToRemoveExists = createRequiredCheck(
+  "Tag IDs to remove",
+  (body) => body.toRemove
+);
+
 const checkTaggingInstanceIdExists = createRequiredCheck(
   "Instance ID",
   (body) => body.instanceId
 );
 
-function addTaggingRoutes(router, foriegnKey, maybeGetInstance) {
+function addTaggingRoutes(
+  router,
+  foriegnKey,
+  maybeGetInstance,
+  maybeGetManyInstances
+) {
   /**
    * create
    */
-  router.post("/tagging/:id", async (req, res) => {
+  router.post("/tagging", async (req, res) => {
     try {
       const user = await requireAuth(req, res);
 
-      const { instanceId } = validateRequest(req, [
+      const { toAdd, toRemove, instanceId } = validateRequest(req, [
+        checkTaggingTagIdsToAddExists,
+        checkTaggingTagIdsToRemoveExists,
         checkTaggingInstanceIdExists,
       ]);
 
-      const [tag] = await Promise.all([
-        maybeGetTag(req.params.id, user.id),
+      await Promise.all([
+        maybeGetManyTags(toAdd, user.id),
         maybeGetInstance(instanceId, user.id),
+        maybeGetManyTags(toRemove, user.id),
       ]);
 
-      finishPostRequest(
-        res,
-        await Tagging.create({
-          tagId: tag.id,
-          authorId: user.id,
+      await Tagging.destroy({
+        where: {
           [foriegnKey]: instanceId,
-        })
-      );
+          tagId: toRemove,
+          authorId: user.id,
+        },
+      });
+
+      finishPostRequest(res, {
+        added: await Tagging.bulkCreate(
+          toAdd.map((tagId) => ({
+            tagId,
+            authorId: user.id,
+            [foriegnKey]: instanceId,
+          })),
+          {
+            include: "tag",
+          }
+        ),
+        removed: toRemove,
+      });
     } catch (caught) {
       finishBadRequest(res, caught);
     }
