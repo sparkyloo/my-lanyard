@@ -2,6 +2,11 @@ button {
   cursor: pointer;
 }
 
+a.NoEffects,
+button.NoEffects {
+  cursor: default;
+}
+
 button:disabled {
   cursor: not-allowed;
 }

@@ -1,18 +1,21 @@
 import { combineReducers } from "redux";
 import { csrfFetch } from "../csrf";
-import { handleApiErrors, DISMISS_ERRORS } from "./utils/errors";
-import { createItemsReducer, createStatusReducer } from "./utils/items";
+import { DISMISS_ALL, handleApiErrors } from "./utils/errors";
+import {
+  createItemsReducer,
+  createStatusReducer,
+  sortMyItemsFirst,
+} from "./utils/items";
 import { DESELECT_ALL, createSelectionReducer } from "./utils/selection";
 import { items as tagItemsReducer } from "./tags";
 
 export const status = createStatusReducer("card-loading");
 export const items = createItemsReducer("card-data");
-export const errors = createItemsReducer("card-errors", DISMISS_ERRORS);
+export const errors = createItemsReducer("card-errors", [DISMISS_ALL]);
 export const assignment = createItemsReducer("card-assignment");
-export const selections = createSelectionReducer(
-  "card-selections",
-  DESELECT_ALL
-);
+export const selections = createSelectionReducer("card-selections", [
+  DESELECT_ALL,
+]);
 
 export function fetchItem(id) {
   return async (dispatch) => {
@@ -69,6 +72,8 @@ export function fetchItems() {
 
 export function createItem(text, iconId) {
   return async (dispatch) => {
+    let item = null;
+
     try {
       dispatch(status.pending());
 
@@ -80,12 +85,14 @@ export function createItem(text, iconId) {
         },
       });
 
-      dispatch(items.trackItem(await response.json()));
+      dispatch(items.trackItem((item = await response.json())));
     } catch (caught) {
       await handleApiErrors(caught, dispatch, errors);
     } finally {
       dispatch(status.finished());
     }
+
+    return item;
   };
 }
 
@@ -179,7 +186,7 @@ export function getItem(id) {
 export function getItems(includeSystemCards) {
   return ({ cards }) =>
     includeSystemCards
-      ? Object.values(cards.items)
+      ? sortMyItemsFirst(cards.items)
       : Object.values(cards.items).filter((item) => item.authorId !== -1);
 }
 
@@ -193,4 +200,8 @@ export function getSelected({ cards }) {
 
 export function getAssignment({ cards }) {
   return Object.keys(cards.assignment);
+}
+
+export function getStatus({ cards }) {
+  return cards.status;
 }

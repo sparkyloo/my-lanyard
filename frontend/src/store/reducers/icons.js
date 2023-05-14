@@ -1,18 +1,21 @@
 import { combineReducers } from "redux";
 import { csrfFetch } from "../csrf";
-import { handleApiErrors, DISMISS_ERRORS } from "./utils/errors";
-import { createItemsReducer, createStatusReducer } from "./utils/items";
+import { handleApiErrors, DISMISS_ALL } from "./utils/errors";
+import {
+  createItemsReducer,
+  createStatusReducer,
+  sortMyItemsFirst,
+} from "./utils/items";
 import { DESELECT_ALL, createSelectionReducer } from "./utils/selection";
 import { items as tagItemsReducer } from "./tags";
 
 export const status = createStatusReducer("icon-loading");
 export const items = createItemsReducer("icon-data");
-export const errors = createItemsReducer("icon-errors", DISMISS_ERRORS);
+export const errors = createItemsReducer("icon-errors", [DISMISS_ALL]);
 export const assignment = createItemsReducer("icon-assignment");
-export const selections = createSelectionReducer(
-  "icon-selections",
-  DESELECT_ALL
-);
+export const selections = createSelectionReducer("icon-selections", [
+  DESELECT_ALL,
+]);
 
 export function fetchItem(id) {
   return async (dispatch) => {
@@ -69,6 +72,8 @@ export function fetchItems() {
 
 export function createItem(name, imageUrl) {
   return async (dispatch) => {
+    let item = null;
+
     try {
       dispatch(status.pending());
 
@@ -80,12 +85,14 @@ export function createItem(name, imageUrl) {
         },
       });
 
-      dispatch(items.trackItem(await response.json()));
+      dispatch(items.trackItem((item = await response.json())));
     } catch (caught) {
       await handleApiErrors(caught, dispatch, errors);
     } finally {
       dispatch(status.finished());
     }
+
+    return item;
   };
 }
 
@@ -179,7 +186,7 @@ export function getItem(id) {
 export function getItems(includeSystemIcons) {
   return ({ icons }) =>
     includeSystemIcons
-      ? Object.values(icons.items)
+      ? sortMyItemsFirst(icons.items)
       : Object.values(icons.items).filter((item) => item.authorId !== -1);
 }
 
@@ -193,4 +200,8 @@ export function getSelected({ icons }) {
 
 export function getAssignment({ icons }) {
   return Object.keys(icons.assignment);
+}
+
+export function getStatus({ icons }) {
+  return icons.status;
 }

@@ -19,8 +19,8 @@ export function HomePage() {
       >
         <H1>Welcome to My Lanyard</H1>
         <Span>
-          Sign up now for an account to create new items and use explore and use
-          the existing system assets.
+          Sign up now for an account to create new items or use the existing
+          system assets.
         </Span>
       </FlexCol>
     </>

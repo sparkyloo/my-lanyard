@@ -6,6 +6,7 @@ body {
   margin: 0;
   margin-bottom: 4rem;
   font-family: sans-serif;
+  -webkit-overflow-scrolling: touch;
 }
 
 h1,h2,h3,p,button {

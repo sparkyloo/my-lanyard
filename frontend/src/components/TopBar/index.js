@@ -5,9 +5,10 @@ import { useSession } from "../../state";
 import { FlexRow } from "../FlexRow";
 import { FlexCol } from "../FlexCol";
 import { Checkbox } from "../Checkbox";
-import { Span } from "../Text";
+import { Span, H2 } from "../Text";
 import { Button } from "../Button";
 import { Tabs } from "../Tabs";
+import { Modal } from "../Modal";
 import { Input } from "../../components/Input";
 import { DropDown } from "../../components/DropDown";
 
@@ -47,6 +48,14 @@ export function TopBar({ showSystemAssets, children }) {
     return true;
   }, [children]);
 
+  const tabOptions = useMemo(() => {
+    if (session) {
+      return TAB_OPTIONS;
+    } else {
+      return TAB_OPTIONS.slice(0, -1);
+    }
+  }, [session]);
+
   return (
     <FlexCol
       position="sticky"
@@ -77,7 +86,7 @@ export function TopBar({ showSystemAssets, children }) {
             </Button>
           </FlexCol>
           <Tabs
-            options={TAB_OPTIONS}
+            options={tabOptions}
             selected={location.pathname}
             onChange={(selected) => {
               history.push(selected);
@@ -158,5 +167,24 @@ export function Filters({
         />
       )}
     </FlexRow>
+  );
+}
+
+export function InfoModal({ children, flow }) {
+  return (
+    <>
+      <Button variant="secondary" onClick={flow.toggle}>
+        ?
+      </Button>
+      <Modal {...flow}>
+        <FlexCol minWidth={40} maxWidth={40} gap={2}>
+          <FlexRow justify="between">
+            <H2>Help</H2>
+            <Button onClick={flow.toggle}>Close</Button>
+          </FlexRow>
+          {children}
+        </FlexCol>
+      </Modal>
+    </>
   );
 }

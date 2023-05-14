@@ -1,3 +1,5 @@
+import { RESET_ALL } from "./reset";
+
 export const DESELECT_ALL = "all-selections/reset";
 
 export function deselectAll() {
@@ -7,7 +9,7 @@ export function deselectAll() {
   };
 }
 
-export function createSelectionReducer(prefix, OTHER_RESET) {
+export function createSelectionReducer(prefix, otherResets = []) {
   const initialState = {};
 
   const RESET = `${prefix}/reset`;
@@ -17,11 +19,12 @@ export function createSelectionReducer(prefix, OTHER_RESET) {
   function reducer(state = initialState, { type, payload }) {
     let nextState = { ...state };
 
-    if (!!OTHER_RESET && type === OTHER_RESET) {
+    if (otherResets.length && otherResets.includes(type)) {
       type = RESET;
     }
 
     switch (type) {
+      case RESET_ALL:
       case RESET: {
         return { ...initialState };
       }

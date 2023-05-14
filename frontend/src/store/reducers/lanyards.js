@@ -1,18 +1,21 @@
 import { combineReducers } from "redux";
 import { csrfFetch } from "../csrf";
-import { handleApiErrors, DISMISS_ERRORS } from "./utils/errors";
-import { createItemsReducer, createStatusReducer } from "./utils/items";
+import { handleApiErrors, DISMISS_ALL } from "./utils/errors";
+import {
+  createItemsReducer,
+  createStatusReducer,
+  sortMyItemsFirst,
+} from "./utils/items";
 import { DESELECT_ALL, createSelectionReducer } from "./utils/selection";
 import { items as tagItemsReducer } from "./tags";
 
 export const status = createStatusReducer("lanyard-loading");
 export const items = createItemsReducer("lanyard-data");
-export const errors = createItemsReducer("lanyard-errors", DISMISS_ERRORS);
+export const errors = createItemsReducer("lanyard-errors", [DISMISS_ALL]);
 export const assignment = createItemsReducer("lanyard-assignment");
-export const selections = createSelectionReducer(
-  "lanyard-selections",
-  DESELECT_ALL
-);
+export const selections = createSelectionReducer("lanyard-selections", [
+  DESELECT_ALL,
+]);
 
 export function fetchItem(id) {
   return async (dispatch) => {
@@ -69,6 +72,8 @@ export function fetchItems() {
 
 export function createItem(name, description, cardIds) {
   return async (dispatch) => {
+    let item = null;
+
     try {
       dispatch(status.pending());
 
@@ -81,12 +86,14 @@ export function createItem(name, description, cardIds) {
         },
       });
 
-      dispatch(items.trackItem(await response.json()));
+      dispatch(items.trackItem((item = await response.json())));
     } catch (caught) {
       await handleApiErrors(caught, dispatch, errors);
     } finally {
       dispatch(status.finished());
     }
+
+    return item;
   };
 }
 
@@ -181,7 +188,7 @@ export function getItem(id) {
 export function getItems(includeSystemLanyards) {
   return ({ lanyards }) =>
     includeSystemLanyards
-      ? Object.values(lanyards.items)
+      ? sortMyItemsFirst(lanyards.items)
       : Object.values(lanyards.items).filter((item) => item.authorId !== -1);
 }
 
@@ -195,4 +202,8 @@ export function getSelected({ lanyards }) {
 
 export function getAssignment({ lanyards }) {
   return Object.keys(lanyards.assignment);
+}
+
+export function getStatus({ lanyards }) {
+  return lanyards.status;
 }

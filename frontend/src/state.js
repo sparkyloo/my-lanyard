@@ -1,4 +1,4 @@
-import { useHistory, useParams } from "react-router-dom";
+import { useHistory, useLocation, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useModal } from "./hooks/modal";
@@ -15,15 +15,25 @@ import * as tagState from "./store/reducers/tags";
 import { deselectAll } from "./store/reducers/utils/selection";
 
 export function useSession() {
+  const history = useHistory();
+  const location = useLocation();
   const dispatch = useDispatch();
   const session = useSelector(authState.getSession);
 
-  const doLogout = useCallback(() => dispatch(authState.destroySession()), []);
+  const doLogout = useCallback(() => {
+    dispatch(authState.destroySession());
 
-  const doLoginAsDemo = useCallback(
-    () => dispatch(authState.startDemoSession()),
-    []
-  );
+    if (location.pathname === "/tags") {
+      history.replace("/login");
+    } else {
+      history.push("/login");
+    }
+  }, [location.pathname, history]);
+
+  const doLoginAsDemo = useCallback(() => {
+    dispatch(authState.startDemoSession());
+    history.replace("/");
+  }, [history]);
 
   return {
     session,
@@ -58,20 +68,27 @@ export function useAppState() {
 
 function useReduxList(topic, includeSystemAssets) {
   const dispatch = useDispatch();
+  const status = useSelector(topic.getStatus);
 
   useEffect(() => {
-    dispatch(topic.fetchItems());
-  }, []);
+    if (!status.initialized) {
+      dispatch(topic.fetchItems());
+    }
+  }, [status.initialized]);
 
   const items = useSelector(topic.getItems(includeSystemAssets));
   const selected = useSelector(topic.getSelected);
 
   const [selectedForEdit, selectItemForEdit] = useState(null);
-  const [selectedForTagging, selectItemForTagging] = useState(null);
+  const selectedItem = useSelector(topic.getItem(selectedForEdit));
+  const selectedItemAuthorId = useMemo(() => {
+    const id = selectedItem?.authorId;
+
+    return typeof id === "undefined" ? null : id;
+  }, [selectedItem]);
 
   const newFlow = useModal();
   const editFlow = useModal();
-  const taggingFlow = useModal();
 
   useEffect(() => {
     if (selectedForEdit) {
@@ -84,18 +101,6 @@ function useReduxList(topic, includeSystemAssets) {
       selectItemForEdit(null);
     }
   }, [editFlow.show]);
-
-  useEffect(() => {
-    if (selectedForTagging) {
-      taggingFlow.forceModalState(true);
-    }
-  }, [selectedForTagging]);
-
-  useEffect(() => {
-    if (!taggingFlow.show) {
-      selectItemForTagging(null);
-    }
-  }, [taggingFlow.show]);
 
   const resetSelections = useCallback(() => {
     dispatch(topic.selections.reset());
@@ -114,38 +119,45 @@ function useReduxList(topic, includeSystemAssets) {
     selected,
     selectedForEdit,
     selectItemForEdit,
-    selectedForTagging,
-    selectItemForTagging,
+    selectedItemAuthorId,
     newFlow,
     editFlow,
-    taggingFlow,
     resetSelections,
     selectItem,
     deselectItem,
   };
 }
 
-function useLimitedReduxList(topic, includeSystemAssets) {
+export function useSingleSelection(list, active) {
   const dispatch = useDispatch();
 
+  const previousSelected = useRef(list.selected);
+
   useEffect(() => {
-    dispatch(topic.fetchItems());
-  }, []);
+    if (active) {
+      if (list.selected.length > 1) {
+        for (const id of previousSelected.current) {
+          dispatch(list.deselectItem(id));
+        }
+      }
+
+      previousSelected.current = list.selected;
+    }
+  }, [list.selected]);
+}
+
+function useLimitedReduxList(topic, includeSystemAssets) {
+  const dispatch = useDispatch();
+  const selected = useSelector(topic.getSelected);
+  const status = useSelector(topic.getStatus);
+
+  useEffect(() => {
+    if (!status.initialized) {
+      dispatch(topic.fetchItems());
+    }
+  }, [status.initialized]);
 
   const items = useSelector(topic.getItems(includeSystemAssets));
-  const selected = useSelector(topic.getSelected);
-
-  const previousSelected = useRef(selected);
-
-  useEffect(() => {
-    if (selected.length > 1) {
-      for (const id of previousSelected.current) {
-        dispatch(topic.selections.forget(id));
-      }
-    }
-
-    previousSelected.current = selected;
-  }, [selected]);
 
   const selectItem = useCallback((id) => {
     dispatch(topic.selections.pick(id));
@@ -206,8 +218,11 @@ export function useIconList(includeSystemAssets) {
   const { items, ...rest } = useReduxList(iconState, includeSystemAssets);
   const { filtered, filterControls } = useFilters(items, includeSystemAssets);
 
+  const infoFlow = useModal();
+
   return {
     ...rest,
+    infoFlow,
     items: filtered,
     filterControls,
   };
@@ -227,9 +242,11 @@ export function useLimitedIconList(includeSystemAssets) {
   };
 }
 
-export function useIconCreationForm(close) {
+export function useIconCreationForm(modalState) {
   const dispatch = useDispatch();
   const errorList = useSelector(iconState.getErrors);
+
+  const { tagList, saveTaggings } = useTaggingForm("icons");
 
   const dismissError = useCallback((errId) => {
     dispatch(iconState.errors.untrackItem(errId));
@@ -239,11 +256,17 @@ export function useIconCreationForm(close) {
   const imageUrlInput = useInput("");
 
   const { isPending, submitButton } = useForm(async () => {
-    await dispatch(iconState.createItem(nameInput.value, imageUrlInput.value));
-    close();
+    const item = await dispatch(
+      iconState.createItem(nameInput.value, imageUrlInput.value)
+    );
+
+    await saveTaggings(item.id);
+
+    modalState.toggle();
   });
 
   return {
+    tagList,
     errorList,
     isPending,
     nameInput,
@@ -253,37 +276,45 @@ export function useIconCreationForm(close) {
   };
 }
 
-export function useIconEditForm(id, close) {
+export function useIconEditForm(id, modalState) {
   const dispatch = useDispatch();
   const errorList = useSelector(iconState.getErrors);
   const icon = useSelector(iconState.getItem(id));
+
+  const { tagList, saveTaggings } = useTaggingForm("icons", id);
 
   const dismissError = useCallback((errId) => {
     dispatch(iconState.errors.untrackItem(errId));
   }, []);
 
-  const nameInput = useInput(icon.value || "");
-  const imageUrlInput = useInput(icon.imageUrl || "");
+  const nameInput = useInput(icon?.name || "");
+  const imageUrlInput = useInput(icon?.imageUrl || "");
 
   const { isPending: savePending, submitButton: saveButton } = useForm(
     async () => {
-      await dispatch(
-        iconState.updateItem(id, nameInput.value, imageUrlInput.value)
-      );
-      close();
+      if (icon.authorId !== -1) {
+        await dispatch(
+          iconState.updateItem(id, nameInput.value, imageUrlInput.value)
+        );
+      }
+
+      await saveTaggings();
+
+      modalState.toggle();
     }
   );
 
   const { isPending: deletePending, submitButton: deleteButton } = useForm(
     async () => {
       await dispatch(iconState.deleteItem(id));
-      close();
+      modalState.toggle();
     }
   );
 
   const isPending = savePending || deletePending;
 
   return {
+    tagList,
     errorList,
     savePending,
     deletePending,
@@ -300,8 +331,11 @@ export function useCardList(includeSystemAssets) {
   const { items, ...rest } = useReduxList(cardState, includeSystemAssets);
   const { filtered, filterControls } = useFilters(items, includeSystemAssets);
 
+  const infoFlow = useModal();
+
   return {
     ...rest,
+    infoFlow,
     items: filtered,
     filterControls,
   };
@@ -322,10 +356,14 @@ export function useLimitedCardList(includeSystemAssets) {
   };
 }
 
-export function useCardCreationForm(includeSystemAssets, close) {
+export function useCardCreationForm(includeSystemAssets, modalState) {
   const dispatch = useDispatch();
   const iconList = useLimitedIconList(includeSystemAssets);
   const errorList = useSelector(iconState.getErrors);
+
+  useSingleSelection(iconList, modalState.show);
+
+  const { tagList, saveTaggings } = useTaggingForm("cards");
 
   const dismissError = useCallback((errId) => {
     dispatch(cardState.errors.untrackItem(errId));
@@ -334,11 +372,17 @@ export function useCardCreationForm(includeSystemAssets, close) {
   const textInput = useInput("");
 
   const { isPending, submitButton } = useForm(async () => {
-    await dispatch(cardState.createItem(textInput.value, iconList.selected[0]));
-    close();
+    const item = await dispatch(
+      cardState.createItem(textInput.value, iconList.selected[0])
+    );
+
+    await saveTaggings(item.id);
+
+    modalState.toggle();
   });
 
   return {
+    tagList,
     iconList,
     errorList,
     isPending,
@@ -348,11 +392,15 @@ export function useCardCreationForm(includeSystemAssets, close) {
   };
 }
 
-export function useCardEditForm(id, includeSystemAssets, close) {
+export function useCardEditForm(id, includeSystemAssets, modalState) {
   const dispatch = useDispatch();
   const iconList = useLimitedIconList(includeSystemAssets);
   const errorList = useSelector(cardState.getErrors);
   const card = useSelector(cardState.getItem(id));
+
+  useSingleSelection(iconList, modalState.show);
+
+  const { tagList, saveTaggings } = useTaggingForm("cards", id);
 
   const dismissError = useCallback((errId) => {
     dispatch(cardState.errors.untrackItem(errId));
@@ -362,23 +410,29 @@ export function useCardEditForm(id, includeSystemAssets, close) {
 
   const { isPending: savePending, submitButton: saveButton } = useForm(
     async () => {
-      await dispatch(
-        cardState.updateItem(id, textInput.value, iconList.selected[0])
-      );
-      close();
+      if (card.authorId !== -1) {
+        await dispatch(
+          cardState.updateItem(id, textInput.value, iconList.selected[0])
+        );
+      }
+
+      await saveTaggings();
+
+      modalState.toggle();
     }
   );
 
   const { isPending: deletePending, submitButton: deleteButton } = useForm(
     async () => {
       await dispatch(cardState.deleteItem(id));
-      close();
+      modalState.toggle();
     }
   );
 
   const isPending = savePending || deletePending;
 
   return {
+    tagList,
     iconList,
     errorList,
     savePending,
@@ -396,6 +450,8 @@ export function useLanyard() {
   const history = useHistory();
   const dispatch = useDispatch();
 
+  const infoFlow = useModal();
+
   useEffect(() => {
     dispatch(lanyardState.fetchItems());
   }, []);
@@ -409,12 +465,6 @@ export function useLanyard() {
 
   const card = useMemo(() => cards[i], [cards, i]);
 
-  console.log({
-    cards,
-    card,
-    i,
-  });
-
   const gotoPrev = useCallback(() => {
     let prev = i - 1;
 
@@ -422,7 +472,7 @@ export function useLanyard() {
       prev = cards.length - 1;
     }
 
-    history.push(`/lanyards/${id}/card/${prev}`);
+    history.replace(`/lanyards/${id}/card/${prev}`);
   }, [id, i, cards]);
 
   const gotoNext = useCallback(() => {
@@ -432,33 +482,28 @@ export function useLanyard() {
       next = 0;
     }
 
-    history.push(`/lanyards/${id}/card/${next}`);
+    history.replace(`/lanyards/${id}/card/${next}`);
   }, [id, i, cards]);
 
   return {
     card,
+    infoFlow,
     gotoPrev,
     gotoNext,
   };
 }
 
 export function useLanyardList(includeSystemAssets) {
-  const history = useHistory();
   const { items, ...rest } = useReduxList(lanyardState, includeSystemAssets);
   const { filtered, filterControls } = useFilters(items, includeSystemAssets);
 
-  const viewItem = useCallback(
-    (id) => {
-      history.push(`/lanyards/${id}/card/0`);
-    },
-    [history]
-  );
+  const infoFlow = useModal();
 
   return {
     ...rest,
     items: filtered,
     filterControls,
-    viewItem,
+    infoFlow,
   };
 }
 
@@ -477,10 +522,14 @@ export function useLimitedLanyardList(includeSystemAssets) {
   };
 }
 
-export function useLanyardCreationForm(includeSystemAssets, close) {
+export function useLanyardCreationForm(includeSystemAssets, modalState) {
   const dispatch = useDispatch();
   const cardList = useCardList(includeSystemAssets);
   const errorList = useSelector(lanyardState.getErrors);
+
+  useSingleSelection(cardList, modalState.show);
+
+  const { tagList, saveTaggings } = useTaggingForm("lanyards");
 
   const dismissError = useCallback((errId) => {
     dispatch(lanyardState.errors.untrackItem(errId));
@@ -490,17 +539,21 @@ export function useLanyardCreationForm(includeSystemAssets, close) {
   const descriptionInput = useInput("");
 
   const { isPending, submitButton } = useForm(async () => {
-    await dispatch(
+    const item = await dispatch(
       lanyardState.createItem(
         nameInput.value,
         descriptionInput.value,
         cardList.selected
       )
     );
-    close();
+
+    await saveTaggings(item.id);
+
+    modalState.toggle();
   });
 
   return {
+    tagList,
     cardList,
     errorList,
     isPending,
@@ -511,11 +564,15 @@ export function useLanyardCreationForm(includeSystemAssets, close) {
   };
 }
 
-export function useLanyardEditForm(id, includeSystemAssets, close) {
+export function useLanyardEditForm(id, includeSystemAssets, modalState) {
   const dispatch = useDispatch();
   const cardList = useLimitedCardList(includeSystemAssets);
   const errorList = useSelector(lanyardState.getErrors);
   const lanyard = useSelector(lanyardState.getItem(id));
+
+  useSingleSelection(cardList, modalState.show);
+
+  const { tagList, saveTaggings } = useTaggingForm("lanyards", id);
 
   const dismissError = useCallback((errId) => {
     dispatch(lanyardState.errors.untrackItem(errId));
@@ -526,28 +583,34 @@ export function useLanyardEditForm(id, includeSystemAssets, close) {
 
   const { isPending: savePending, submitButton: saveButton } = useForm(
     async () => {
-      await dispatch(
-        lanyardState.updateItem(
-          id,
-          nameInput.value,
-          descriptionInput.value,
-          cardList.selected
-        )
-      );
-      close();
+      if (lanyard.authorId !== -1) {
+        await dispatch(
+          lanyardState.updateItem(
+            id,
+            nameInput.value,
+            descriptionInput.value,
+            cardList.selected
+          )
+        );
+      }
+
+      await saveTaggings();
+
+      modalState.toggle();
     }
   );
 
   const { isPending: deletePending, submitButton: deleteButton } = useForm(
     async () => {
       await dispatch(lanyardState.deleteItem(id));
-      close();
+      modalState.toggle();
     }
   );
 
   const isPending = savePending || deletePending;
 
   return {
+    tagList,
     cardList,
     errorList,
     savePending,
@@ -565,8 +628,11 @@ export function useTagList(includeSystemAssets) {
   const { items, ...rest } = useReduxList(tagState, includeSystemAssets);
   const { filtered, filterControls } = useFilters(items, includeSystemAssets);
 
+  const infoFlow = useModal();
+
   return {
     ...rest,
+    infoFlow,
     items: filtered,
     filterControls,
   };
@@ -647,32 +713,24 @@ export function useTagEditForm(id, close) {
   };
 }
 
-export function useTaggingForm(kind, id, close) {
+export function useTaggingForm(kind, id) {
   let getItem;
   let updateTagging;
-  let getErrors;
-  let untrackError;
 
   switch (kind) {
     case "icons": {
       getItem = iconState.getItem;
       updateTagging = iconState.updateTagging;
-      getErrors = iconState.getErrors;
-      untrackError = iconState.errors.untrackItem;
       break;
     }
     case "cards": {
       getItem = cardState.getItem;
       updateTagging = cardState.updateTagging;
-      getErrors = cardState.getErrors;
-      untrackError = cardState.errors.untrackItem;
       break;
     }
     case "lanyards": {
       getItem = lanyardState.getItem;
       updateTagging = lanyardState.updateTagging;
-      getErrors = lanyardState.getErrors;
-      untrackError = lanyardState.errors.untrackItem;
       break;
     }
     default: {
@@ -682,22 +740,23 @@ export function useTaggingForm(kind, id, close) {
 
   const dispatch = useDispatch();
   const tagList = useTagList(false);
-  const errorList = useSelector(getErrors);
   const selectedItem = useSelector(getItem(id));
-  const selectedTags = tagList.selected.map((id) =>
-    typeof id === "string" ? parseInt(id) : id
+
+  const selectedTags = useMemo(
+    () => tagList.selected.map((id) => asNumber(id)),
+    [id, tagList.selected]
   );
+
   const assignments = useMemo(
-    () =>
-      selectedItem.taggings.map(({ tagId }) =>
-        typeof tagId === "string" ? parseInt(tagId) : tagId
-      ),
+    () => (!selectedItem ? [] : selectedItem.taggings || []),
     [selectedItem]
   );
 
   useEffect(() => {
-    for (const { tagId } of selectedItem.taggings) {
-      dispatch(tagState.selections.pick(tagId));
+    if (selectedItem) {
+      for (const { tagId } of selectedItem.taggings) {
+        dispatch(tagState.selections.pick(tagId));
+      }
     }
 
     return () => {
@@ -705,36 +764,40 @@ export function useTaggingForm(kind, id, close) {
     };
   }, []);
 
-  const dismissError = useCallback((errId) => {
-    dispatch(untrackError(errId));
-  }, []);
+  const saveTaggings = useCallback(
+    async (instanceId = id) => {
+      const toAdd = new Set();
+      const toRemove = new Set();
 
-  const { isPending, submitButton: saveButton } = useForm(async () => {
-    const toAdd = new Set();
-    const toRemove = new Set();
-
-    for (const id of selectedTags) {
-      if (!assignments.includes(id)) {
-        toAdd.add(id);
+      for (const id of selectedTags) {
+        if (!assignments.find((tagging) => asNumber(tagging.id) === id)) {
+          toAdd.add(id);
+        }
       }
-    }
 
-    for (const id of assignments) {
-      if (!selectedTags.includes(id)) {
-        toRemove.add(id);
+      for (const { tagId, authorId } of assignments) {
+        if (authorId === -1) {
+          continue;
+        }
+
+        if (!selectedTags.includes(asNumber(tagId))) {
+          toRemove.add(id);
+        }
       }
-    }
 
-    await dispatch(updateTagging(id, Array.from(toAdd), Array.from(toRemove)));
-
-    close();
-  });
+      await dispatch(
+        updateTagging(instanceId, Array.from(toAdd), Array.from(toRemove))
+      );
+    },
+    [dispatch, updateTagging, id, selectedTags]
+  );
 
   return {
     tagList,
-    errorList,
-    isPending,
-    saveButton,
-    dismissError,
+    saveTaggings,
   };
+}
+
+function asNumber(arg) {
+  return typeof arg === "string" ? parseInt(arg) : arg;
 }

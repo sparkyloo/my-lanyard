@@ -1,4 +1,6 @@
-export function createStatusReducer(prefix, OTHER_RESET) {
+import { RESET_ALL } from "./reset";
+
+export function createStatusReducer(prefix, otherResets = []) {
   const initialState = {
     initialized: false,
     pending: 0,
@@ -8,12 +10,13 @@ export function createStatusReducer(prefix, OTHER_RESET) {
   const PENDING = `${prefix}/pending`;
   const FINISHED = `${prefix}/finished`;
 
-  function reducer(state = initialState, { type, payload }) {
-    if (!!OTHER_RESET && type === OTHER_RESET) {
+  function reducer(state = initialState, { type }) {
+    if (otherResets.length && otherResets.includes(type)) {
       type = RESET;
     }
 
     switch (type) {
+      case RESET_ALL:
       case RESET: {
         return { ...initialState };
       }
@@ -59,7 +62,7 @@ export function createStatusReducer(prefix, OTHER_RESET) {
   return reducer;
 }
 
-export function createItemsReducer(prefix, OTHER_RESET) {
+export function createItemsReducer(prefix, otherResets = []) {
   const initialState = {};
 
   const RESET = `${prefix}/reset`;
@@ -69,11 +72,12 @@ export function createItemsReducer(prefix, OTHER_RESET) {
   function reducer(state = initialState, { type, payload }) {
     let nextState = { ...state };
 
-    if (!!OTHER_RESET && type === OTHER_RESET) {
+    if (otherResets.length && otherResets.includes(type)) {
       type = RESET;
     }
 
     switch (type) {
+      case RESET_ALL:
       case RESET: {
         return { ...initialState };
       }
@@ -127,4 +131,16 @@ export function createItemsReducer(prefix, OTHER_RESET) {
   };
 
   return reducer;
+}
+
+export function sortMyItemsFirst(items) {
+  return Object.values(items).sort((a, b) =>
+    a.authorId === b.authorId
+      ? 0
+      : a.authorId !== -1
+      ? -1
+      : b.authorId !== -1
+      ? -1
+      : 1
+  );
 }

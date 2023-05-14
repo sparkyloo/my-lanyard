@@ -1,16 +1,15 @@
 import { combineReducers } from "redux";
 import { csrfFetch } from "../csrf";
-import { handleApiErrors, DISMISS_ERRORS } from "./utils/errors";
+import { handleApiErrors, DISMISS_ALL } from "./utils/errors";
 import { createItemsReducer, createStatusReducer } from "./utils/items";
 import { DESELECT_ALL, createSelectionReducer } from "./utils/selection";
 
 export const status = createStatusReducer("tag-loading");
 export const items = createItemsReducer("tag-data");
-export const errors = createItemsReducer("tag-errors", DISMISS_ERRORS);
-export const selections = createSelectionReducer(
-  "tag-selections",
-  DESELECT_ALL
-);
+export const errors = createItemsReducer("tag-errors", [DISMISS_ALL]);
+export const selections = createSelectionReducer("tag-selections", [
+  DESELECT_ALL,
+]);
 
 export function fetchItem(id) {
   return async (dispatch) => {
@@ -129,4 +128,8 @@ export function getErrors({ tags }) {
 
 export function getSelected({ tags }) {
   return Object.keys(tags.selections);
+}
+
+export function getStatus({ tags }) {
+  return tags.status;
 }

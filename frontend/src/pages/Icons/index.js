@@ -5,7 +5,7 @@ import {
   useIconEditForm,
   useSession,
 } from "../../state";
-import { Filters, TopBar } from "../../components/TopBar";
+import { Filters, InfoModal, TopBar } from "../../components/TopBar";
 import { Button } from "../../components/Button";
 import { Grid } from "../../components/Grid";
 import { Image } from "../../components/Image";
@@ -13,7 +13,7 @@ import { Input } from "../../components/Input";
 import { FlexCol } from "../../components/FlexCol";
 import { FlexRow } from "../../components/FlexRow";
 import { Modal } from "../../components/Modal";
-import { H2 } from "../../components/Text";
+import { H2, P } from "../../components/Text";
 import { ErrorList } from "../../components/ErrorList";
 import { PageContent } from "../../components/PageContent";
 import { EditTagging } from "../Tags";
@@ -24,14 +24,13 @@ export function IconsPage({ showSystemAssets }) {
     selected,
     selectedForEdit,
     selectItemForEdit,
-    selectedForTagging,
-    selectItemForTagging,
+    selectedItemAuthorId,
     resetSelections,
     selectItem,
     deselectItem,
     newFlow,
     editFlow,
-    taggingFlow,
+    infoFlow,
     filterControls,
   } = useIconList(showSystemAssets.checked);
 
@@ -40,11 +39,23 @@ export function IconsPage({ showSystemAssets }) {
   return (
     <PageContent>
       <TopBar showSystemAssets={showSystemAssets}>
-        {!!session && <Button onClick={newFlow.toggle}>Create New</Button>}
         <Filters {...filterControls} />
-        <Button disabled={!selected.length} onClick={resetSelections}>
-          Deselect All
-        </Button>
+        <FlexRow gap={1}>
+          {!!session && <Button onClick={newFlow.toggle}>Create New</Button>}
+          <InfoModal flow={infoFlow}>
+            {!!session ? (
+              <>
+                <P>
+                  This page is where you can create new icons and edit your
+                  existing icons.
+                </P>
+                <P>Click on any icon to update their assigned tags.</P>
+              </>
+            ) : (
+              <P>This page is where you can view all the premade icons.</P>
+            )}
+          </InfoModal>
+        </FlexRow>
       </TopBar>
       <IconGrid
         allowEdits
@@ -54,33 +65,19 @@ export function IconsPage({ showSystemAssets }) {
         selectItem={selectItem}
         deselectItem={deselectItem}
         selectItemForEdit={selectItemForEdit}
-        selectItemForTagging={selectItemForTagging}
       />
       <Modal {...newFlow}>
-        {!!newFlow.show && (
-          <CreateNewIcon
-            close={newFlow.toggle}
-            showSystemAssets={showSystemAssets}
-          />
-        )}
+        <CreateNewIcon
+          modalState={newFlow}
+          showSystemAssets={showSystemAssets}
+        />
       </Modal>
       <Modal {...editFlow}>
-        {!!selectedForEdit && (
-          <EditIcon
-            id={selectedForEdit}
-            close={editFlow.toggle}
-            showSystemAssets={showSystemAssets}
-          />
-        )}
-      </Modal>
-      <Modal {...taggingFlow}>
-        {!!taggingFlow.show && (
-          <EditTagging
-            kind="icons"
-            id={selectedForTagging}
-            close={taggingFlow.toggle}
-          />
-        )}
+        <EditIcon
+          id={selectedForEdit}
+          modalState={editFlow}
+          authorId={selectedItemAuthorId}
+        />
       </Modal>
     </PageContent>
   );
@@ -95,7 +92,6 @@ export function IconGrid({
   selectItem,
   deselectItem,
   selectItemForEdit,
-  selectItemForTagging,
   allowEdits,
   allowTagging,
   ...props
@@ -107,15 +103,15 @@ export function IconGrid({
 
   return (
     <Grid col={col} colGap={colGap} rowGap={rowGap} {...props}>
-      {items.map(({ id, authorId, name, imageUrl }) => {
+      {items.map(({ id, name, imageUrl }) => {
         const isSelected = selected.includes(`${id}`);
-        const isMine = session?.id === authorId;
 
         return (
           <Button
             key={id}
-            variant="plain"
             rounded
+            noMouseEvents={!session}
+            variant="plain"
             display="flex"
             direction="column"
             align="center"
@@ -126,7 +122,9 @@ export function IconGrid({
             }}
             outline={isSelected ? "blue" : null}
             onClick={() => {
-              if (isSelected) {
+              if (allowTagging) {
+                selectItemForEdit(id);
+              } else if (isSelected) {
                 deselectItem(id);
               } else {
                 selectItem(id);
@@ -134,7 +132,6 @@ export function IconGrid({
             }}
           >
             <Image
-              key={name}
               alt={name}
               src={imageUrl}
               width={12}
@@ -144,26 +141,7 @@ export function IconGrid({
                 color: "light",
               }}
             />
-            <FlexCol
-              gap={0.25}
-              padding={{
-                bottom: allowEdits || allowTagging ? 0.25 : 0,
-              }}
-            >
-              {!!isMine && !!allowEdits && (
-                <Button
-                  margin={{
-                    bottom: 0.25,
-                  }}
-                  onClick={() => selectItemForEdit(id)}
-                >
-                  edit
-                </Button>
-              )}
-              {!!allowTagging && (
-                <Button onClick={() => selectItemForTagging(id)}>tags</Button>
-              )}
-            </FlexCol>
+            <FlexRow />
           </Button>
         );
       })}
@@ -171,24 +149,26 @@ export function IconGrid({
   );
 }
 
-function CreateNewIcon({ close }) {
+function CreateNewIcon({ modalState }) {
   const {
+    tagList,
     errorList,
     isPending,
     nameInput,
     imageUrlInput,
     submitButton,
     dismissError,
-  } = useIconCreationForm(close);
+  } = useIconCreationForm(modalState);
 
   return (
     <FlexCol minWidth={40} gap={2}>
       <FlexRow justify="between">
         <H2>Create Icon</H2>
-        <Button onClick={() => close()}>Close</Button>
+        <Button onClick={modalState.toggle}>Close</Button>
       </FlexRow>
       <Input label="Name" disabled={isPending} {...nameInput} />
       <Input label="Image Url" disabled={isPending} {...imageUrlInput} />
+      <EditTagging tagList={tagList} />
       <Button {...submitButton} disabled={isPending}>
         Save
       </Button>
@@ -197,8 +177,9 @@ function CreateNewIcon({ close }) {
   );
 }
 
-function EditIcon({ id, close }) {
+function EditIcon({ id, authorId, modalState }) {
   const {
+    tagList,
     errorList,
     isPending,
     saveButton,
@@ -206,23 +187,40 @@ function EditIcon({ id, close }) {
     nameInput,
     imageUrlInput,
     dismissError,
-  } = useIconEditForm(id, close);
+  } = useIconEditForm(id, modalState);
+
+  const { session } = useSession();
+
+  const isMine = session?.id === authorId;
+  const closeButton = <Button onClick={modalState.toggle}>Close</Button>;
 
   return (
     <FlexCol minWidth={40} gap={2}>
-      <FlexRow justify="between">
-        <H2>Edit Icon</H2>
-        <Button onClick={() => close()}>Close</Button>
+      {!!isMine && (
+        <>
+          <FlexRow justify="between">
+            <H2>Edit Icon</H2>
+            {closeButton}
+          </FlexRow>
+          <Input label="Name" disabled={isPending} {...nameInput} />
+          <Input label="Image Url" disabled={isPending} {...imageUrlInput} />
+          <ErrorList errors={errorList} dismissError={dismissError} />
+        </>
+      )}
+      <EditTagging
+        tagList={tagList}
+        closeButton={!!isMine ? null : closeButton}
+      />
+      <FlexRow gap={2}>
+        <Button flex={1} {...saveButton} disabled={isPending}>
+          Save
+        </Button>
+        {!!isMine && (
+          <Button flex={1} {...deleteButton} disabled={isPending}>
+            Delete
+          </Button>
+        )}
       </FlexRow>
-      <Input label="Name" disabled={isPending} {...nameInput} />
-      <Input label="Image Url" disabled={isPending} {...imageUrlInput} />
-      <Button {...saveButton} disabled={isPending}>
-        Save
-      </Button>
-      <Button {...deleteButton} disabled={isPending}>
-        Delete
-      </Button>
-      <ErrorList errors={errorList} dismissError={dismissError} />
     </FlexCol>
   );
 }

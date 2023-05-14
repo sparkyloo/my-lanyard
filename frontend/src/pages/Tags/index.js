@@ -6,7 +6,7 @@ import {
   useTaggingForm,
   useSession,
 } from "../../state";
-import { Filters, TopBar } from "../../components/TopBar";
+import { Filters, InfoModal, TopBar } from "../../components/TopBar";
 import { Button } from "../../components/Button";
 import { Grid } from "../../components/Grid";
 import { Input } from "../../components/Input";
@@ -28,14 +28,29 @@ export function TagsPage({ showSystemAssets }) {
     deselectItem,
     newFlow,
     editFlow,
-  } = useTagList(showSystemAssets.checked);
+    infoFlow,
+    filterControls,
+  } = useTagList(false);
 
   const { session } = useSession();
 
   return (
     <PageContent>
       <TopBar showSystemAssets={showSystemAssets}>
-        {!!session && <Button onClick={newFlow.toggle}>Create New</Button>}
+        <Filters {...filterControls} />
+        <FlexRow gap={1}>
+          {!!session && <Button onClick={newFlow.toggle}>Create New</Button>}
+          <InfoModal flow={infoFlow}>
+            {!!session ? (
+              <P>
+                This page is where you can create new tags and edit the name of
+                your existing tags.
+              </P>
+            ) : (
+              <P>This page is where you can view all the premade tags.</P>
+            )}
+          </InfoModal>
+        </FlexRow>
       </TopBar>
       <TagGrid
         allowEdits
@@ -86,7 +101,7 @@ export function TagGrid({
         const isSelected = selected.includes(`${id}`);
         const isMine = session?.id === authorId;
 
-        return (
+        return isMine ? (
           <Button
             key={id}
             variant="plain"
@@ -101,7 +116,9 @@ export function TagGrid({
             }}
             outline={isSelected ? "blue" : null}
             onClick={() => {
-              if (isSelected) {
+              if (allowEdits) {
+                selectItemForEdit(id);
+              } else if (isSelected) {
                 deselectItem(id);
               } else {
                 selectItem(id);
@@ -110,18 +127,20 @@ export function TagGrid({
           >
             <FlexCol padding={{ y: 1, x: 2 }} align="center">
               <P>{name}</P>
-              {!!isMine && !!allowEdits && (
-                <Button
-                  margin={{
-                    top: 0.5,
-                  }}
-                  onClick={() => selectItemForEdit(id)}
-                >
-                  edit
-                </Button>
-              )}
             </FlexCol>
           </Button>
+        ) : (
+          <FlexCol
+            rounded
+            border={{
+              all: true,
+              color: "light",
+            }}
+            padding={{ y: 1, x: 2 }}
+            align="center"
+          >
+            <P>{name}</P>
+          </FlexCol>
         );
       })}
     </Grid>
@@ -139,7 +158,7 @@ function CreateNewTag({ close }) {
         <Button onClick={() => close()}>Close</Button>
       </FlexRow>
       <Input label="Name" disabled={isPending} {...nameInput} />
-      <Button {...submitButton} disabled={isPending}>
+      <Button {...submitButton} disabled={isPending || !nameInput.value}>
         Save
       </Button>
       <ErrorList errors={errorList} dismissError={dismissError} />
@@ -175,46 +194,34 @@ function EditTag({ id, close }) {
   );
 }
 
-export function EditTagging({ id, kind, close }) {
-  const { tagList, errorList, isPending, saveButton, dismissError } =
-    useTaggingForm(kind, id, close);
-
+export function EditTagging({ tagList, closeButton }) {
   return (
     <FlexCol minWidth={40} gap={2}>
       <FlexRow justify="between">
-        <H2>Edit Tagging</H2>
-        <Button onClick={() => close()}>Close</Button>
+        <H2>Tagging</H2>
+        {!!closeButton && closeButton}
       </FlexRow>
-      {tagList.items.length ? (
-        <>
-          <Filters hideTagSelect {...tagList.filterControls} />
-          <TagGrid
-            rounded
-            scroll="y"
-            maxHeight={48}
-            col={4}
-            colGap={1}
-            rowGap={1}
-            border={{
-              all: true,
-              color: "light",
-            }}
-            padding={{
-              x: 2,
-              y: 1,
-            }}
-            items={tagList.items}
-            selected={tagList.selected}
-            selectItem={tagList.selectItem}
-            deselectItem={tagList.deselectItem}
-          />
-          <Button {...saveButton} disabled={isPending}>
-            Save
-          </Button>
-        </>
-      ) : (
-        <P>No personal tags created yet, come back after creating some.</P>
-      )}
+      <Filters hideTagSelect {...tagList.filterControls} />
+      <TagGrid
+        rounded
+        scroll="y"
+        maxHeight={24}
+        col={4}
+        colGap={1}
+        rowGap={1}
+        border={{
+          all: true,
+          color: "light",
+        }}
+        padding={{
+          x: 2,
+          y: 1,
+        }}
+        items={tagList.items}
+        selected={tagList.selected}
+        selectItem={tagList.selectItem}
+        deselectItem={tagList.deselectItem}
+      />
     </FlexCol>
   );
 }

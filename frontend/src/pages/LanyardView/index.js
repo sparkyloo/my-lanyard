@@ -3,7 +3,7 @@ import { useLanyard } from "../../state";
 import { TopBar } from "../../components/TopBar";
 import { Button } from "../../components/Button";
 import { Image } from "../../components/Image";
-import { P } from "../../components/Text";
+import { H2 } from "../../components/Text";
 import { FlexRow } from "../../components/FlexRow";
 import { PageContent } from "../../components/PageContent";
 import { FlexCol } from "../../components/FlexCol";
@@ -18,7 +18,7 @@ export function LanyardViewPage({ showSystemAssets }) {
   return (
     <PageContent>
       <TopBar showSystemAssets={showSystemAssets} />
-      <FlexCol>
+      <FlexCol gap={2}>
         <FlexRow gap={1} align="center">
           <Button height={48} onClick={gotoPrev}>
             {"<"}
@@ -39,8 +39,11 @@ export function LanyardViewPage({ showSystemAssets }) {
           </Button>
         </FlexRow>
         {!!card.text && (
-          <P
+          <H2
             rounded
+            display="flex"
+            align="center"
+            justify="center"
             width="full"
             bg="white"
             border={{
@@ -53,7 +56,7 @@ export function LanyardViewPage({ showSystemAssets }) {
             }}
           >
             {card.text}
-          </P>
+          </H2>
         )}
       </FlexCol>
     </PageContent>

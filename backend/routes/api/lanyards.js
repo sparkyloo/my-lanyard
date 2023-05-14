@@ -92,11 +92,6 @@ function getLanyardValues({ body }) {
 
 const checkLanyardNameExists = createRequiredCheck("Name", (body) => body.name);
 
-const checkLanyardDescriptionExists = createRequiredCheck(
-  "Description",
-  (body) => body.description
-);
-
 const checkLanyardCardIdsExists = createRequiredCheck(
   "Cards",
   (body) => body.cardIds
@@ -111,7 +106,6 @@ router.post("/", async (req, res) => {
 
     const { name, description, cardIds } = await validateRequest(req, [
       checkLanyardNameExists,
-      checkLanyardDescriptionExists,
       checkLanyardCardIdsExists,
     ]);
 

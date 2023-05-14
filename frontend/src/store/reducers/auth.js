@@ -1,8 +1,9 @@
 import { combineReducers } from "redux";
 import { csrfFetch } from "../csrf";
-import { handleApiErrors, DISMISS_ERRORS } from "./utils/errors";
+import { handleApiErrors, DISMISS_ALL } from "./utils/errors";
 import { createItemsReducer } from "./utils/items";
 import { fetchItems as fetchTags } from "./tags";
+import { resetAll } from "./utils/reset";
 
 const initialState = {
   checked: false,
@@ -13,7 +14,7 @@ const CHECKED = "auth/checked";
 const LOGIN = "auth/login";
 const LOGOUT = "auth/logout";
 
-export const errors = createItemsReducer("auth-errors", DISMISS_ERRORS);
+export const errors = createItemsReducer("auth-errors", [DISMISS_ALL]);
 
 export function trackChecked() {
   return {
@@ -55,8 +56,6 @@ export function checkSession() {
 export function startSession(credential, password) {
   return async (dispatch) => {
     try {
-      dispatch(errors.reset());
-
       const response = await csrfFetch("/api/session", {
         method: "POST",
         body: {
@@ -66,6 +65,7 @@ export function startSession(credential, password) {
       });
 
       dispatch(trackSession(await response.json()));
+      dispatch(resetAll());
     } catch (caught) {
       await handleApiErrors(caught, dispatch, errors);
     }
@@ -75,8 +75,6 @@ export function startSession(credential, password) {
 export function startDemoSession() {
   return async (dispatch) => {
     try {
-      dispatch(errors.reset());
-
       const response = await csrfFetch("/api/session", {
         method: "POST",
         body: {
@@ -86,8 +84,7 @@ export function startDemoSession() {
       });
 
       dispatch(trackSession(await response.json()));
-
-      window.location.pathname = "/lanyards";
+      dispatch(resetAll());
     } catch (caught) {
       await handleApiErrors(caught, dispatch, errors);
     }
@@ -102,8 +99,7 @@ export function destroySession() {
       });
 
       dispatch(untrackSession());
-
-      window.location.pathname = "/";
+      dispatch(resetAll());
     } catch (caught) {
       await handleApiErrors(caught, dispatch, errors);
     }
@@ -113,8 +109,6 @@ export function destroySession() {
 export function createNewUser(email, password, firstName, lastName) {
   return async (dispatch) => {
     try {
-      dispatch(errors.reset());
-
       const response = await csrfFetch("/api/users", {
         method: "POST",
         body: {
@@ -126,6 +120,7 @@ export function createNewUser(email, password, firstName, lastName) {
       });
 
       dispatch(trackSession(await response.json()));
+      dispatch(resetAll());
     } catch (caught) {
       await handleApiErrors(caught, dispatch, errors);
     }

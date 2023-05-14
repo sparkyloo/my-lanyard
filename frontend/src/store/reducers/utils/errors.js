@@ -1,8 +1,8 @@
-export const DISMISS_ERRORS = "all-errors/reset";
+export const DISMISS_ALL = "all-errors/reset";
 
 export function dismissErrors() {
   return {
-    type: DISMISS_ERRORS,
+    type: DISMISS_ALL,
     payload: null,
   };
 }
