@@ -291,15 +291,19 @@ export function useUserEdit() {
 
   const errorList = useAuthErrors();
 
+  const firstValueRef = useRef(first.value);
+  const lastValueRef = useRef(last.value);
+  const emailValueRef = useRef(email.value);
+
   const dismissError = useCallback((errId) => {
     dispatch(authState.errors.untrackItem(errId));
   }, []);
 
   useEffect(() => {
     if (session !== sessionRef.current) {
-      first.setValue(session?.firstName || "");
-      last.setValue(session?.lastName || "");
-      email.setValue(session?.email || "");
+      first.setValue((firstValueRef.current = session?.firstName || ""));
+      last.setValue((lastValueRef.current = session?.lastName || ""));
+      email.setValue((emailValueRef.current = session?.email || ""));
     }
   }, [session]);
 
@@ -308,6 +312,9 @@ export function useUserEdit() {
       dispatch(authState.errors.reset());
 
       await dispatch(authState.editUser(email.value, first.value, last.value));
+      firstValueRef.current = first.value;
+      lastValueRef.current = last.value;
+      emailValueRef.current = email.value;
 
       dispatch(
         authState.errors.trackItem({
@@ -349,10 +356,19 @@ export function useUserEdit() {
       }
     });
 
+  const isDirty = useMemo(() => {
+    return (
+      first.value !== firstValueRef.current ||
+      last.value !== lastValueRef.current ||
+      email.value !== emailValueRef.current
+    );
+  }, [first.value, last.value, email.value, infoChangePending]);
+
   const isPending = infoChangePending || passwordChangePending;
 
   return {
     session,
+    isDirty,
     first,
     last,
     email,
@@ -879,9 +895,24 @@ export function useTagList(includeSystemAssets) {
 
   const infoFlow = useModal();
 
+  const showTagEditor = useMemo(() => {
+    return (
+      !!items.length ||
+      !!filterControls.isDirty ||
+      !!filterControls.searchInput.value ||
+      !!filterControls.tagSelect.value
+    );
+  }, [
+    items.length,
+    filterControls.isDirty,
+    filterControls.searchInput.value,
+    filterControls.tagSelect.value,
+  ]);
+
   return {
     ...rest,
     infoFlow,
+    showTagEditor,
     items: filtered,
     filterControls,
   };

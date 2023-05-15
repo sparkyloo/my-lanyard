@@ -60,7 +60,6 @@ export function IconsPage({ showSystemAssets }) {
                   This page is where you can create new icons and edit your
                   existing icons.
                 </P>
-                <P>Click on any icon to update their assigned tags.</P>
               </>
             ) : (
               <P>This page is where you can view all the premade icons.</P>
@@ -190,7 +189,7 @@ function CreateNewIcon({ modalState }) {
       </FlexRow>
       <Input label="Name" disabled={isPending} {...nameInput} />
       <Input label="Image Url" disabled={isPending} {...imageUrlInput} />
-      {!!tagList.items.length && <EditTagging tagList={tagList} />}
+      {tagList.showTagEditor && <EditTagging tagList={tagList} />}
       <Button {...submitButton} disabled={isPending}>
         Save
       </Button>
@@ -228,7 +227,7 @@ function EditIcon({ id, authorId, modalState }) {
           <Input label="Image Url" disabled={isPending} {...imageUrlInput} />
         </>
       )}
-      {!!tagList.items.length && (
+      {tagList.showTagEditor && (
         <EditTagging
           tagList={tagList}
           closeButton={!!isMine ? null : closeButton}

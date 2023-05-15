@@ -57,8 +57,9 @@ export function LanyardsPage({ showSystemAssets }) {
           <InfoModal flow={infoFlow}>
             {!!session ? (
               <P>
-                This page is where you can view all the available tags. You can
-                create new tags and edit the name of your existing tags.
+                This page is where you can view all the available lanyards. You
+                can create new lanyards and edit the name of your existing
+                lanyards.
               </P>
             ) : (
               <P>
@@ -262,7 +263,7 @@ function CreateNewLanyard({ showSystemAssets, modalState }) {
         includeCards={cardsToShow}
         emptyMessage={emptyMessage}
       />
-      {!!tagList.items.length && <EditTagging tagList={tagList} />}
+      {tagList.showTagEditor && <EditTagging tagList={tagList} />}
       <Button {...submitButton} disabled={disabledSave}>
         Save
       </Button>
@@ -355,7 +356,7 @@ function EditLanyard({ id, authorId, showSystemAssets, modalState }) {
           <ErrorList errors={errorList} dismissError={dismissError} />
         </>
       )}
-      {!!tagList.items.length && (
+      {tagList.showTagEditor && (
         <EditTagging
           tagList={tagList}
           closeButton={!!isMine ? null : closeButton}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import { getItems } from "../store/reducers/tags";
 import { useInput } from "./input";
@@ -12,6 +12,7 @@ export function useFilters(items, includeSystemAssets) {
   const tagSelect = useInput("");
   const searchInput = useInput("");
   const searchInputRef = useRef();
+  const prevSearchValue = useRef(searchInput.value);
 
   const filterItems = useCallback(() => {
     setFavorFiltered(true);
@@ -41,6 +42,7 @@ export function useFilters(items, includeSystemAssets) {
   }, [items, searchInput.value, tagSelect.value]);
 
   const { submitButton } = useForm(() => {
+    prevSearchValue.current = searchInput.value;
     filterItems();
   });
 
@@ -56,6 +58,7 @@ export function useFilters(items, includeSystemAssets) {
   useEffect(() => {
     const enterHandler = (event) => {
       if (event.key === "Enter") {
+        prevSearchValue.current = searchInput.value;
         filterItems();
       }
     };
@@ -67,6 +70,10 @@ export function useFilters(items, includeSystemAssets) {
     };
   }, [filterItems]);
 
+  const isDirty = useMemo(() => {
+    return searchInput.value !== prevSearchValue.current;
+  }, [searchInput.value]);
+
   if (!Array.isArray(filtered)) {
     throw new Error("items for useFilters must be an array");
   }
@@ -76,6 +83,7 @@ export function useFilters(items, includeSystemAssets) {
     filterControls: {
       tags,
       tagSelect,
+      isDirty,
       searchButton: submitButton,
       searchInput: {
         ...searchInput,

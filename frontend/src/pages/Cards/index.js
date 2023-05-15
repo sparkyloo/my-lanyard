@@ -57,8 +57,8 @@ export function CardsPage({ showSystemAssets }) {
           <InfoModal flow={infoFlow}>
             {!!session ? (
               <P>
-                This page is where you can view all the available tags. You can
-                create new tags and edit the name of your existing tags.
+                This page is where you can view all the available cards. You can
+                create new cards and edit the name of your existing cards.
               </P>
             ) : (
               <P>This page is where you can view all the premade cards.</P>
@@ -229,7 +229,7 @@ function CreateNewCard({ showSystemAssets, modalState }) {
         selectItem={iconList.selectItem}
         deselectItem={iconList.deselectItem}
       />
-      {!!tagList.items.length && <EditTagging tagList={tagList} />}
+      {tagList.showTagEditor && <EditTagging tagList={tagList} />}
       <Button {...submitButton} disabled={disabledSave}>
         Save
       </Button>
@@ -292,7 +292,7 @@ function EditCard({ id, authorId, showSystemAssets, modalState }) {
           />
         </>
       )}
-      {!!tagList.items.length && (
+      {tagList.showTagEditor && (
         <EditTagging
           tagList={tagList}
           closeButton={!!isMine ? null : closeButton}

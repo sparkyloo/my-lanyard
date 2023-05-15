@@ -11,6 +11,7 @@ import { FlexRow } from "../../components/FlexRow";
 export function HomePage() {
   const {
     session,
+    isDirty,
     first,
     last,
     email,
@@ -46,7 +47,7 @@ export function HomePage() {
           </>
         ) : (
           <>
-            <H1>Welcome Back!</H1>
+            <H1>Edit Personal Info</H1>
             <FlexCol gap={2}>
               <FlexRow gap={2}>
                 <FlexCol gap={2} minWidth={40} maxWidth={48}>
@@ -74,7 +75,11 @@ export function HomePage() {
                       {...last}
                     />
                   </FlexCol>
-                  <Button {...saveInfoChange} disabled={isPending} width="full">
+                  <Button
+                    {...saveInfoChange}
+                    disabled={isPending || !isDirty}
+                    width="full"
+                  >
                     Save Info
                   </Button>
                 </FlexCol>
