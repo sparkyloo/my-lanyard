@@ -42,7 +42,7 @@ export function HomePage() {
             <H1>Welcome to Lanyards</H1>
             <Span>
               Sign up now for an account to create new items or use the existing
-              system assets.
+              premade items.
             </Span>
           </>
         ) : (
