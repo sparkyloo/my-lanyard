@@ -128,22 +128,45 @@ function useReduxList(topic, includeSystemAssets) {
   };
 }
 
-export function useSingleSelection(list, active) {
-  const dispatch = useDispatch();
+export function usePreviousSelection(list, active, initialSelection = []) {
+  const previousActive = useRef(active);
 
+  useEffect(() => {
+    if (active && !previousActive.current) {
+      for (const itemId of initialSelection) {
+        list.selectItem(itemId);
+      }
+    }
+
+    if (active !== previousActive.current) {
+      previousActive.current = active;
+    }
+  }, [active, list.selected]);
+}
+
+export function useSingleSelection(list, active, initialSelection = null) {
+  const previousActive = useRef(active);
   const previousSelected = useRef(list.selected);
 
   useEffect(() => {
+    if (active && !previousActive.current && initialSelection !== null) {
+      list.selectItem(initialSelection);
+    }
+
     if (active) {
       if (list.selected.length > 1) {
         for (const id of previousSelected.current) {
-          dispatch(list.deselectItem(id));
+          list.deselectItem(id);
         }
       }
 
       previousSelected.current = list.selected;
     }
-  }, [list.selected]);
+
+    if (active !== previousActive.current) {
+      previousActive.current = active;
+    }
+  }, [active, list.selected]);
 }
 
 function useLimitedReduxList(topic, includeSystemAssets) {
@@ -214,6 +237,136 @@ export function useLogin() {
   };
 }
 
+export function useSignup() {
+  const history = useHistory();
+
+  const first = useInput("");
+  const last = useInput("");
+  const email = useInput("");
+  const password = useInput("");
+  const dispatch = useDispatch();
+
+  const errorList = useAuthErrors();
+
+  const dismissError = useCallback((errId) => {
+    dispatch(authState.errors.untrackItem(errId));
+  }, []);
+
+  const { submitButton, isPending } = useForm(async (dispatch) => {
+    await dispatch(
+      authState.createNewUser(
+        email.value,
+        password.value,
+        first.value,
+        last.value
+      )
+    );
+
+    history.replace("/");
+  });
+
+  return {
+    first,
+    last,
+    email,
+    password,
+    errorList,
+    dismissError,
+    submitButton,
+    isPending,
+  };
+}
+
+export function useUserEdit() {
+  const session = useSelector(authState.getSession);
+  const sessionRef = useRef(session);
+
+  const first = useInput(session?.firstName || "");
+  const last = useInput(session?.lastName || "");
+  const email = useInput(session?.email || "");
+  const currentPassword = useInput("");
+  const changedPassword = useInput("");
+  const confirmPassword = useInput("");
+  const dispatch = useDispatch();
+
+  const errorList = useAuthErrors();
+
+  const dismissError = useCallback((errId) => {
+    dispatch(authState.errors.untrackItem(errId));
+  }, []);
+
+  useEffect(() => {
+    if (session !== sessionRef.current) {
+      first.setValue(session?.firstName || "");
+      last.setValue(session?.lastName || "");
+      email.setValue(session?.email || "");
+    }
+  }, [session]);
+
+  const { submitButton: saveInfoChange, isPending: infoChangePending } =
+    useForm(async (dispatch) => {
+      dispatch(authState.errors.reset());
+
+      await dispatch(authState.editUser(email.value, first.value, last.value));
+
+      dispatch(
+        authState.errors.trackItem({
+          id: "info-change-sucess",
+          content: "Personal info change complete",
+        })
+      );
+    });
+
+  const { submitButton: savePasswordChange, isPending: passwordChangePending } =
+    useForm(async (dispatch) => {
+      dispatch(authState.errors.reset());
+
+      if (changedPassword.value !== confirmPassword.value) {
+        dispatch(
+          authState.errors.trackItem({
+            id: "mismatch",
+            content: "Pasword fields do not match.",
+          })
+        );
+      } else {
+        await dispatch(
+          authState.editUserPassword(
+            currentPassword.value,
+            changedPassword.value
+          )
+        );
+
+        currentPassword.setValue("");
+        changedPassword.setValue("");
+        confirmPassword.setValue("");
+
+        dispatch(
+          authState.errors.trackItem({
+            id: "password-change-sucess",
+            content: "Password change complete",
+          })
+        );
+      }
+    });
+
+  const isPending = infoChangePending || passwordChangePending;
+
+  return {
+    session,
+    first,
+    last,
+    email,
+    currentPassword,
+    changedPassword,
+    confirmPassword,
+    errorList,
+    dismissError,
+    isPending,
+    saveInfoChange,
+    savePasswordChange,
+  };
+}
+
 export function useIconList(includeSystemAssets) {
   const { items, ...rest } = useReduxList(iconState, includeSystemAssets);
   const { filtered, filterControls } = useFilters(items, includeSystemAssets);
@@ -233,6 +386,7 @@ export function useLimitedIconList(includeSystemAssets) {
     iconState,
     includeSystemAssets
   );
+
   const { filtered, filterControls } = useFilters(items, includeSystemAssets);
 
   return {
@@ -256,6 +410,8 @@ export function useIconCreationForm(modalState) {
   const imageUrlInput = useInput("");
 
   const { isPending, submitButton } = useForm(async () => {
+    dispatch(dismissErrors());
+
     const item = await dispatch(
       iconState.createItem(nameInput.value, imageUrlInput.value)
     );
@@ -264,6 +420,14 @@ export function useIconCreationForm(modalState) {
 
     modalState.toggle();
   });
+
+  useEffect(() => {
+    if (!modalState.show && modalState.changed) {
+      dispatch(deselectAll());
+      nameInput.setValue("");
+      imageUrlInput.setValue("");
+    }
+  }, [modalState.show, modalState.changed]);
 
   return {
     tagList,
@@ -281,7 +445,10 @@ export function useIconEditForm(id, modalState) {
   const errorList = useSelector(iconState.getErrors);
   const icon = useSelector(iconState.getItem(id));
 
-  const { tagList, saveTaggings } = useTaggingForm("icons", id);
+  const { tagList, saveTaggings, selectAppliedTags } = useTaggingForm(
+    "icons",
+    id
+  );
 
   const dismissError = useCallback((errId) => {
     dispatch(iconState.errors.untrackItem(errId));
@@ -290,8 +457,18 @@ export function useIconEditForm(id, modalState) {
   const nameInput = useInput(icon?.name || "");
   const imageUrlInput = useInput(icon?.imageUrl || "");
 
+  useEffect(() => {
+    if (modalState.show && modalState.changed) {
+      nameInput.setValue(icon?.name || "");
+      imageUrlInput.setValue(icon?.imageUrl || "");
+      selectAppliedTags();
+    }
+  }, [modalState.show, modalState.changed, icon, selectAppliedTags]);
+
   const { isPending: savePending, submitButton: saveButton } = useForm(
     async () => {
+      dispatch(dismissErrors());
+
       if (icon.authorId !== -1) {
         await dispatch(
           iconState.updateItem(id, nameInput.value, imageUrlInput.value)
@@ -307,9 +484,18 @@ export function useIconEditForm(id, modalState) {
   const { isPending: deletePending, submitButton: deleteButton } = useForm(
     async () => {
       await dispatch(iconState.deleteItem(id));
+
       modalState.toggle();
     }
   );
+
+  useEffect(() => {
+    if (!modalState.show && modalState.changed) {
+      dispatch(deselectAll());
+      nameInput.setValue("");
+      imageUrlInput.setValue("");
+    }
+  }, [modalState.show, modalState.changed]);
 
   const isPending = savePending || deletePending;
 
@@ -359,7 +545,7 @@ export function useLimitedCardList(includeSystemAssets) {
 export function useCardCreationForm(includeSystemAssets, modalState) {
   const dispatch = useDispatch();
   const iconList = useLimitedIconList(includeSystemAssets);
-  const errorList = useSelector(iconState.getErrors);
+  const errorList = useSelector(cardState.getErrors);
 
   useSingleSelection(iconList, modalState.show);
 
@@ -372,6 +558,8 @@ export function useCardCreationForm(includeSystemAssets, modalState) {
   const textInput = useInput("");
 
   const { isPending, submitButton } = useForm(async () => {
+    dispatch(dismissErrors());
+
     const item = await dispatch(
       cardState.createItem(textInput.value, iconList.selected[0])
     );
@@ -380,6 +568,13 @@ export function useCardCreationForm(includeSystemAssets, modalState) {
 
     modalState.toggle();
   });
+
+  useEffect(() => {
+    if (!modalState.show && modalState.changed) {
+      dispatch(deselectAll());
+      textInput.setValue("");
+    }
+  }, [modalState.show, modalState.changed]);
 
   return {
     tagList,
@@ -398,18 +593,30 @@ export function useCardEditForm(id, includeSystemAssets, modalState) {
   const errorList = useSelector(cardState.getErrors);
   const card = useSelector(cardState.getItem(id));
 
-  useSingleSelection(iconList, modalState.show);
+  useSingleSelection(iconList, modalState.show, card?.iconId);
 
-  const { tagList, saveTaggings } = useTaggingForm("cards", id);
+  const { tagList, saveTaggings, selectAppliedTags } = useTaggingForm(
+    "cards",
+    id
+  );
 
   const dismissError = useCallback((errId) => {
     dispatch(cardState.errors.untrackItem(errId));
   }, []);
 
-  const textInput = useInput(card?.name || "");
+  const textInput = useInput(card?.text || "");
+
+  useEffect(() => {
+    if (modalState.show && modalState.changed) {
+      textInput.setValue(card?.text || "");
+      selectAppliedTags();
+    }
+  }, [modalState.show, modalState.changed, card, selectAppliedTags]);
 
   const { isPending: savePending, submitButton: saveButton } = useForm(
     async () => {
+      dispatch(dismissErrors());
+
       if (card.authorId !== -1) {
         await dispatch(
           cardState.updateItem(id, textInput.value, iconList.selected[0])
@@ -425,9 +632,17 @@ export function useCardEditForm(id, includeSystemAssets, modalState) {
   const { isPending: deletePending, submitButton: deleteButton } = useForm(
     async () => {
       await dispatch(cardState.deleteItem(id));
+
       modalState.toggle();
     }
   );
+
+  useEffect(() => {
+    if (!modalState.show && modalState.changed) {
+      dispatch(deselectAll());
+      textInput.setValue("");
+    }
+  }, [modalState.show, modalState.changed]);
 
   const isPending = savePending || deletePending;
 
@@ -527,8 +742,6 @@ export function useLanyardCreationForm(includeSystemAssets, modalState) {
   const cardList = useCardList(includeSystemAssets);
   const errorList = useSelector(lanyardState.getErrors);
 
-  useSingleSelection(cardList, modalState.show);
-
   const { tagList, saveTaggings } = useTaggingForm("lanyards");
 
   const dismissError = useCallback((errId) => {
@@ -539,6 +752,8 @@ export function useLanyardCreationForm(includeSystemAssets, modalState) {
   const descriptionInput = useInput("");
 
   const { isPending, submitButton } = useForm(async () => {
+    dispatch(dismissErrors());
+
     const item = await dispatch(
       lanyardState.createItem(
         nameInput.value,
@@ -551,6 +766,14 @@ export function useLanyardCreationForm(includeSystemAssets, modalState) {
 
     modalState.toggle();
   });
+
+  useEffect(() => {
+    if (!modalState.show && modalState.changed) {
+      dispatch(deselectAll());
+      nameInput.setValue("");
+      descriptionInput.setValue("");
+    }
+  }, [modalState.show, modalState.changed]);
 
   return {
     tagList,
@@ -570,9 +793,16 @@ export function useLanyardEditForm(id, includeSystemAssets, modalState) {
   const errorList = useSelector(lanyardState.getErrors);
   const lanyard = useSelector(lanyardState.getItem(id));
 
-  useSingleSelection(cardList, modalState.show);
+  usePreviousSelection(
+    cardList,
+    modalState.show,
+    lanyard?.cards?.map(({ id }) => id) || []
+  );
 
-  const { tagList, saveTaggings } = useTaggingForm("lanyards", id);
+  const { tagList, saveTaggings, selectAppliedTags } = useTaggingForm(
+    "lanyards",
+    id
+  );
 
   const dismissError = useCallback((errId) => {
     dispatch(lanyardState.errors.untrackItem(errId));
@@ -581,8 +811,18 @@ export function useLanyardEditForm(id, includeSystemAssets, modalState) {
   const nameInput = useInput(lanyard?.name || "");
   const descriptionInput = useInput(lanyard?.description || "");
 
+  useEffect(() => {
+    if (modalState.show && modalState.changed) {
+      nameInput.setValue(lanyard?.name || "");
+      descriptionInput.setValue(lanyard?.description || "");
+      selectAppliedTags();
+    }
+  }, [modalState.show, modalState.changed, selectAppliedTags]);
+
   const { isPending: savePending, submitButton: saveButton } = useForm(
     async () => {
+      dispatch(dismissErrors());
+
       if (lanyard.authorId !== -1) {
         await dispatch(
           lanyardState.updateItem(
@@ -603,9 +843,18 @@ export function useLanyardEditForm(id, includeSystemAssets, modalState) {
   const { isPending: deletePending, submitButton: deleteButton } = useForm(
     async () => {
       await dispatch(lanyardState.deleteItem(id));
+
       modalState.toggle();
     }
   );
+
+  useEffect(() => {
+    if (!modalState.show && modalState.changed) {
+      dispatch(deselectAll());
+      nameInput.setValue("");
+      descriptionInput.setValue("");
+    }
+  }, [modalState.show, modalState.changed]);
 
   const isPending = savePending || deletePending;
 
@@ -650,7 +899,7 @@ export function useLimitedTagList(includeSystemAssets) {
   };
 }
 
-export function useTagCreationForm(close) {
+export function useTagCreationForm(modalState) {
   const dispatch = useDispatch();
   const errorList = useSelector(tagState.getErrors);
 
@@ -661,9 +910,19 @@ export function useTagCreationForm(close) {
   const nameInput = useInput("");
 
   const { isPending, submitButton } = useForm(async () => {
+    dispatch(dismissErrors());
+
     await dispatch(tagState.createItem(nameInput.value));
-    close();
+
+    modalState.toggle();
   });
+
+  useEffect(() => {
+    if (!modalState.show && modalState.changed) {
+      dispatch(deselectAll());
+      nameInput.setValue("");
+    }
+  }, [modalState.show, modalState.changed]);
 
   return {
     errorList,
@@ -674,7 +933,7 @@ export function useTagCreationForm(close) {
   };
 }
 
-export function useTagEditForm(id, close) {
+export function useTagEditForm(id, modalState) {
   const dispatch = useDispatch();
   const errorList = useSelector(tagState.getErrors);
   const tag = useSelector(tagState.getItem(id));
@@ -687,17 +946,28 @@ export function useTagEditForm(id, close) {
 
   const { isPending: savePending, submitButton: saveButton } = useForm(
     async () => {
+      dispatch(dismissErrors());
+
       await dispatch(tagState.updateItem(id, nameInput.value));
-      close();
+
+      modalState.toggle();
     }
   );
 
   const { isPending: deletePending, submitButton: deleteButton } = useForm(
     async () => {
       await dispatch(tagState.deleteItem(id));
-      close();
+
+      modalState.toggle();
     }
   );
+
+  useEffect(() => {
+    if (!modalState.show && modalState.changed) {
+      dispatch(deselectAll());
+      nameInput.setValue(tag?.name || "");
+    }
+  }, [modalState.show, modalState.changed]);
 
   const isPending = savePending || deletePending;
 
@@ -742,6 +1012,8 @@ export function useTaggingForm(kind, id) {
   const tagList = useTagList(false);
   const selectedItem = useSelector(getItem(id));
 
+  const allTags = useSelector(tagState.getItemMap);
+
   const selectedTags = useMemo(
     () => tagList.selected.map((id) => asNumber(id)),
     [id, tagList.selected]
@@ -752,26 +1024,28 @@ export function useTaggingForm(kind, id) {
     [selectedItem]
   );
 
-  useEffect(() => {
+  const selectAppliedTags = useCallback(() => {
     if (selectedItem) {
       for (const { tagId } of selectedItem.taggings) {
-        dispatch(tagState.selections.pick(tagId));
+        tagList.selectItem(tagId);
       }
     }
-
-    return () => {
-      dispatch(tagState.selections.reset());
-    };
-  }, []);
+  }, [selectedItem, tagList.selectItem]);
 
   const saveTaggings = useCallback(
     async (instanceId = id) => {
       const toAdd = new Set();
       const toRemove = new Set();
 
-      for (const id of selectedTags) {
-        if (!assignments.find((tagging) => asNumber(tagging.id) === id)) {
-          toAdd.add(id);
+      for (const tagId of selectedTags) {
+        let tag = allTags[tagId];
+
+        if (!tag || tag.authorId === -1) {
+          continue;
+        }
+
+        if (!assignments.find((tagging) => asNumber(tagging.id) === tagId)) {
+          toAdd.add(tagId);
         }
       }
 
@@ -781,7 +1055,7 @@ export function useTaggingForm(kind, id) {
         }
 
         if (!selectedTags.includes(asNumber(tagId))) {
-          toRemove.add(id);
+          toRemove.add(tagId);
         }
       }
 
@@ -794,6 +1068,7 @@ export function useTaggingForm(kind, id) {
 
   return {
     tagList,
+    selectAppliedTags,
     saveTaggings,
   };
 }

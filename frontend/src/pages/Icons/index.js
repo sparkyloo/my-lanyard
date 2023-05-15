@@ -17,6 +17,8 @@ import { H2, P } from "../../components/Text";
 import { ErrorList } from "../../components/ErrorList";
 import { PageContent } from "../../components/PageContent";
 import { EditTagging } from "../Tags";
+import { useSelector } from "react-redux";
+import { doPersonalTagsExist } from "../../store/reducers/tags";
 
 export function IconsPage({ showSystemAssets }) {
   const {
@@ -97,20 +99,23 @@ export function IconGrid({
   ...props
 }) {
   const { session } = useSession();
+  const hasPersonalTags = useSelector(doPersonalTagsExist);
 
   allowEdits = !!session && !!allowEdits;
   allowTagging = !!session && !!allowTagging;
 
   return (
     <Grid col={col} colGap={colGap} rowGap={rowGap} {...props}>
-      {items.map(({ id, name, imageUrl }) => {
+      {items.map(({ id, authorId, name, imageUrl }) => {
         const isSelected = selected.includes(`${id}`);
+        const isMine = authorId !== -1;
+        const noMouseEvents = !session || (!isMine && !hasPersonalTags);
 
         return (
           <Button
             key={id}
             rounded
-            noMouseEvents={!session}
+            noMouseEvents={noMouseEvents}
             variant="plain"
             display="flex"
             direction="column"
@@ -168,8 +173,12 @@ function CreateNewIcon({ modalState }) {
       </FlexRow>
       <Input label="Name" disabled={isPending} {...nameInput} />
       <Input label="Image Url" disabled={isPending} {...imageUrlInput} />
-      <EditTagging tagList={tagList} />
-      <Button {...submitButton} disabled={isPending}>
+      {!!tagList.items.length && <EditTagging tagList={tagList} />}
+      <Button
+        handleEnterKey={modalState.show}
+        {...submitButton}
+        disabled={isPending}
+      >
         Save
       </Button>
       <ErrorList errors={errorList} dismissError={dismissError} />
@@ -204,23 +213,35 @@ function EditIcon({ id, authorId, modalState }) {
           </FlexRow>
           <Input label="Name" disabled={isPending} {...nameInput} />
           <Input label="Image Url" disabled={isPending} {...imageUrlInput} />
-          <ErrorList errors={errorList} dismissError={dismissError} />
         </>
       )}
-      <EditTagging
-        tagList={tagList}
-        closeButton={!!isMine ? null : closeButton}
-      />
+      {!!tagList.items.length && (
+        <EditTagging
+          tagList={tagList}
+          closeButton={!!isMine ? null : closeButton}
+        />
+      )}
       <FlexRow gap={2}>
-        <Button flex={1} {...saveButton} disabled={isPending}>
+        <Button
+          handleEnterKey={modalState.show}
+          flex={1}
+          {...saveButton}
+          disabled={isPending}
+        >
           Save
         </Button>
         {!!isMine && (
-          <Button flex={1} {...deleteButton} disabled={isPending}>
+          <Button
+            variant="secondary"
+            flex={1}
+            {...deleteButton}
+            disabled={isPending}
+          >
             Delete
           </Button>
         )}
       </FlexRow>
+      <ErrorList errors={errorList} dismissError={dismissError} />
     </FlexCol>
   );
 }

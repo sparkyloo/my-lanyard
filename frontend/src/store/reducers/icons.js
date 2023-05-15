@@ -8,6 +8,8 @@ import {
 } from "./utils/items";
 import { DESELECT_ALL, createSelectionReducer } from "./utils/selection";
 import { items as tagItemsReducer } from "./tags";
+import { resetCards } from "./cards";
+import { resetLanyards } from "./lanyards";
 
 export const status = createStatusReducer("icon-loading");
 export const items = createItemsReducer("icon-data");
@@ -106,6 +108,8 @@ export function deleteItem(id) {
       });
 
       dispatch(items.untrackItem(id));
+      dispatch(resetLanyards);
+      dispatch(resetCards);
     } catch (caught) {
       await handleApiErrors(caught, dispatch, errors);
     } finally {
@@ -140,6 +144,8 @@ export function updateItem(id, name, imageUrl) {
 
       dispatch(assignment.trackItems(taggingItems));
       dispatch(tagItemsReducer.trackItems(tagItems));
+      dispatch(resetLanyards);
+      dispatch(resetCards);
     } catch (caught) {
       await handleApiErrors(caught, dispatch, errors);
     } finally {

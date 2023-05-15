@@ -1,4 +1,4 @@
-const { Tagging } = require("../db/models");
+const { Tagging, Tag, Icon, Card, Lanyard } = require("../db/models");
 const { requireAuth } = require("../utils/auth");
 const { maybeGetManyTags } = require("../routes/api/tags");
 const { notAllowed, notFound } = require("../utils/errors");
@@ -10,22 +10,63 @@ const {
   finishGetRequest,
   finishDeleteRequest,
 } = require("../utils/validation");
+const { byUserOrSystem } = require("./misc");
 
-const includeTaggings = {
+const includeTaggings = (authorId) => ({
+  required: false,
   as: "taggings",
   model: Tagging,
-  include: "tag",
-};
+  where: {
+    authorId: byUserOrSystem(authorId),
+  },
+  include: {
+    required: false,
+    as: "tag",
+    model: Tag,
+    where: {
+      authorId: byUserOrSystem(authorId),
+    },
+  },
+});
 
 async function getDataWithTags(req, getter, authorId) {
   return getter(req, authorId, {
-    include: includeTaggings,
+    include: includeTaggings(authorId),
   });
 }
 
 async function maybeGetTagging(tagId, userId) {
   const instance = await Tagging.findByPk(tagId, {
-    include: ["card", "icon", "lanyard", "tag"],
+    include: [
+      {
+        as: "icon",
+        model: Icon,
+        where: {
+          authorId: byUserOrSystem(userId),
+        },
+      },
+      {
+        as: "card",
+        model: Card,
+        where: {
+          authorId: byUserOrSystem(userId),
+        },
+      },
+      {
+        as: "lanyard",
+        model: Lanyard,
+        where: {
+          authorId: byUserOrSystem(userId),
+        },
+      },
+      {
+        as: "tag",
+        model: Tag,
+        where: {
+          authorId: byUserOrSystem(userId),
+        },
+      },
+    ],
   });
 
   if (instance) {

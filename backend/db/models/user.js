@@ -42,6 +42,34 @@ module.exports = (sequelize, DataTypes) => {
       return await User.scope("currentUser").findByPk(user.id);
     }
 
+    static async changePassword({ id, current, changed }) {
+      const user = await User.scope("loginUser").findOne({
+        where: {
+          id,
+        },
+      });
+
+      if (user) {
+        if (user.validatePassword(current)) {
+          await user.update({
+            passwordHash: bcrypt.hashSync(changed),
+          });
+
+          const updated = await User.scope("currentUser").findByPk(user.id);
+
+          if (updated) {
+            return updated;
+          } else {
+            throw new Error("This should never happen");
+          }
+        } else {
+          throw new Error("Current password is incorrect");
+        }
+      } else {
+        throw new Error(`Could not find user with id: ${id}`);
+      }
+    }
+
     /**
      * Helper method for defining associations.
      * This method is not a part of Sequelize lifecycle.

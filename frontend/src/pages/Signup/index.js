@@ -1,8 +1,5 @@
 import "./Signup.css";
-import { Link, useHistory } from "react-router-dom";
-import { createNewUser } from "../../store/reducers/auth";
-import { useInput } from "../../hooks/input";
-import { useForm } from "../../hooks/form";
+import { Link } from "react-router-dom";
 import { TopBar } from "../../components/TopBar";
 import { FlexCol } from "../../components/FlexCol";
 import { FlexRow } from "../../components/FlexRow";
@@ -10,33 +7,19 @@ import { H1, Span } from "../../components/Text";
 import { Input } from "../../components/Input";
 import { Button } from "../../components/Button";
 import { ErrorList } from "../../components/ErrorList";
-import { useAuthErrors } from "../../state";
-import * as authState from "../../store/reducers/auth";
-import { useCallback } from "react";
-import { useDispatch } from "react-redux";
+import { useSignup } from "../../state";
 
 export function SignupPage() {
-  const history = useHistory();
-
-  const first = useInput("");
-  const last = useInput("");
-  const email = useInput("");
-  const password = useInput("");
-  const dispatch = useDispatch();
-
-  const errorList = useAuthErrors();
-
-  const dismissError = useCallback((errId) => {
-    dispatch(authState.errors.untrackItem(errId));
-  }, []);
-
-  const { submitButton, isPending } = useForm(async (dispatch) => {
-    await dispatch(
-      createNewUser(email.value, password.value, first.value, last.value)
-    );
-
-    history.replace("/");
-  });
+  const {
+    first,
+    last,
+    email,
+    password,
+    errorList,
+    dismissError,
+    submitButton,
+    isPending,
+  } = useSignup();
 
   return (
     <>
@@ -76,7 +59,12 @@ export function SignupPage() {
           />
         </FlexCol>
         <FlexCol gap={1.5} align="end">
-          <Button {...submitButton} disabled={isPending} width="full">
+          <Button
+            handleEnterKey
+            {...submitButton}
+            disabled={isPending}
+            width="full"
+          >
             Submit
           </Button>
           <FlexRow gap={0.5} fontSize={4} fontWeight={1}>

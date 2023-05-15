@@ -8,6 +8,7 @@ import {
 } from "./utils/items";
 import { DESELECT_ALL, createSelectionReducer } from "./utils/selection";
 import { items as tagItemsReducer } from "./tags";
+import { resetCards } from "./cards";
 
 export const status = createStatusReducer("lanyard-loading");
 export const items = createItemsReducer("lanyard-data");
@@ -16,6 +17,11 @@ export const assignment = createItemsReducer("lanyard-assignment");
 export const selections = createSelectionReducer("lanyard-selections", [
   DESELECT_ALL,
 ]);
+
+export function resetLanyards(dispatch) {
+  dispatch(items.reset());
+  dispatch(status.reset());
+}
 
 export function fetchItem(id) {
   return async (dispatch) => {
@@ -87,6 +93,7 @@ export function createItem(name, description, cardIds) {
       });
 
       dispatch(items.trackItem((item = await response.json())));
+      dispatch(resetCards);
     } catch (caught) {
       await handleApiErrors(caught, dispatch, errors);
     } finally {
@@ -107,6 +114,7 @@ export function deleteItem(id) {
       });
 
       dispatch(items.untrackItem(id));
+      dispatch(resetCards);
     } catch (caught) {
       await handleApiErrors(caught, dispatch, errors);
     } finally {
@@ -142,6 +150,7 @@ export function updateItem(id, name, description, cardIds) {
 
       dispatch(assignment.trackItems(taggingItems));
       dispatch(tagItemsReducer.trackItems(tagItems));
+      dispatch(resetCards);
     } catch (caught) {
       await handleApiErrors(caught, dispatch, errors);
     } finally {

@@ -1,5 +1,5 @@
 const express = require("express");
-const { Lanyard, Tagging, Card, Icon } = require("../../db/models");
+const { Lanyard, Card, Icon } = require("../../db/models");
 const { requireAuth, restoreUser } = require("../../utils/auth");
 const { includeTaggings, addTaggingRoutes } = require("../../utils/tagging");
 const { notAllowed, notFound } = require("../../utils/errors");
@@ -12,6 +12,7 @@ const {
   finishPatchRequest,
   finishDeleteRequest,
   createRequiredCheck,
+  createMinimumLengthCheck,
 } = require("../../utils/validation");
 const { maybeGetManyCards } = require("./cards");
 
@@ -24,18 +25,27 @@ module.exports.maybeGetManyLanyards = maybeGetManyLanyards;
 
 addTaggingRoutes(router, "lanyardId", maybeGetLanyard, maybeGetManyLanyards);
 
-const includeCards = {
-  as: "cards",
-  model: Card,
-  include: [
-    {
-      as: "icon",
-      model: Icon,
+const includeCardsAndTaggings = (authorId) => [
+  {
+    as: "cards",
+    model: Card,
+    where: {
+      authorId: byUserOrSystem(authorId),
     },
-  ],
-};
-
-const includeCardsAndTaggings = [includeTaggings, includeCards];
+    include: [
+      {
+        as: "icon",
+        model: Icon,
+        where: {
+          authorId: byUserOrSystem(authorId),
+        },
+        include: includeTaggings(authorId),
+      },
+      includeTaggings(authorId),
+    ],
+  },
+  includeTaggings(authorId),
+];
 
 async function maybeGetLanyard(instanceId, userId, options = {}) {
   const instance = await Lanyard.findByPk(instanceId, options);
@@ -97,6 +107,12 @@ const checkLanyardCardIdsExists = createRequiredCheck(
   (body) => body.cardIds
 );
 
+const checkLanyardCardIdsCount = createMinimumLengthCheck(
+  "Cards",
+  1,
+  (body) => body.cardIds
+);
+
 /**
  * create
  */
@@ -107,6 +123,7 @@ router.post("/", async (req, res) => {
     const { name, description, cardIds } = await validateRequest(req, [
       checkLanyardNameExists,
       checkLanyardCardIdsExists,
+      checkLanyardCardIdsCount,
     ]);
 
     const cards = await maybeGetManyCards(cardIds, user.id);
@@ -120,7 +137,7 @@ router.post("/", async (req, res) => {
     await instance.addCards(cards);
 
     await instance.reload({
-      include: includeCardsAndTaggings,
+      include: includeCardsAndTaggings(user.id),
     });
 
     finishPostRequest(res, instance);
@@ -142,7 +159,7 @@ router.get("/", async (req, res) => {
         where: {
           authorId: byUserOrSystem(user?.id),
         },
-        include: includeCardsAndTaggings,
+        include: includeCardsAndTaggings(user?.id),
       })
     );
   } catch (caught) {
@@ -155,7 +172,7 @@ router.get("/instance/:id", async (req, res) => {
     const user = await restoreUser(req, res);
 
     const instance = await maybeGetLanyard(req.params.id, user?.id, {
-      include: includeCardsAndTaggings,
+      include: includeCardsAndTaggings(user?.id),
     });
 
     finishGetRequest(res, instance);
@@ -171,11 +188,48 @@ router.patch("/instance/:id", async (req, res) => {
   try {
     const user = await requireAuth(req, res);
 
+    const { cardIds } = await validateRequest(req, [checkLanyardCardIdsExists]);
+
     const instance = await maybeGetLanyard(req.params.id, user.id, {
-      include: includeCardsAndTaggings,
+      include: includeCardsAndTaggings(user.id),
     });
 
     await instance.update(getLanyardValues(req));
+
+    const toKeepOrAdd = new Set(cardIds);
+    const toRemove = [];
+
+    for (const card of instance.cards) {
+      if (!toKeepOrAdd.has(`${card.id}`)) {
+        toRemove.push(card.id);
+      }
+    }
+
+    if (cardIds.length) {
+      await Card.update(
+        {
+          lanyardId: instance.id,
+        },
+        {
+          where: {
+            id: Array.from(toKeepOrAdd),
+          },
+        }
+      );
+    }
+
+    if (toRemove.length) {
+      await Card.update(
+        {
+          lanyardId: null,
+        },
+        {
+          where: {
+            id: toRemove,
+          },
+        }
+      );
+    }
 
     finishPatchRequest(res, instance);
   } catch (caught) {

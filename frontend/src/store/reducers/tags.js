@@ -122,6 +122,10 @@ export function getItems(includeSystemTags) {
       : Object.values(tags.items).filter((item) => item.authorId !== -1);
 }
 
+export function getItemMap({ tags }) {
+  return tags.items;
+}
+
 export function getErrors({ tags }) {
   return Object.values(tags.errors);
 }
@@ -132,4 +136,9 @@ export function getSelected({ tags }) {
 
 export function getStatus({ tags }) {
   return tags.status;
+}
+
+export function doPersonalTagsExist({ tags }) {
+  return !!Object.values(tags.items).filter((item) => item.authorId !== -1)
+    .length;
 }

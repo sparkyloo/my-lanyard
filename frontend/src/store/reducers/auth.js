@@ -127,6 +127,45 @@ export function createNewUser(email, password, firstName, lastName) {
   };
 }
 
+export function editUser(email, firstName, lastName) {
+  return async (dispatch) => {
+    try {
+      const response = await csrfFetch("/api/users", {
+        method: "PATCH",
+        body: {
+          email,
+          firstName,
+          lastName,
+        },
+      });
+
+      dispatch(trackSession(await response.json()));
+      dispatch(resetAll());
+    } catch (caught) {
+      await handleApiErrors(caught, dispatch, errors);
+    }
+  };
+}
+
+export function editUserPassword(current, changed) {
+  return async (dispatch) => {
+    try {
+      const response = await csrfFetch("/api/users/password", {
+        method: "PATCH",
+        body: {
+          current,
+          changed,
+        },
+      });
+
+      dispatch(trackSession(await response.json()));
+      dispatch(resetAll());
+    } catch (caught) {
+      await handleApiErrors(caught, dispatch, errors);
+    }
+  };
+}
+
 export default combineReducers({
   errors,
   session: (state = initialState, { type, payload }) => {

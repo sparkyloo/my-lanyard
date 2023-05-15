@@ -43,7 +43,12 @@ export function LoginPage() {
           />
         </FlexCol>
         <FlexCol gap={1.5} align="end">
-          <Button {...submitButton} disabled={isPending} width="full">
+          <Button
+            handleEnterKey
+            {...submitButton}
+            disabled={isPending}
+            width="full"
+          >
             Submit
           </Button>
           <FlexRow gap={0.5} fontSize={4} fontWeight={1}>

@@ -11,6 +11,7 @@ export function useFilters(items, includeSystemAssets) {
   const [filtered, setFiltered] = useState(items);
   const tagSelect = useInput("");
   const searchInput = useInput("");
+  const searchInputRef = useRef();
 
   const filterItems = useCallback(() => {
     setFavorFiltered(true);
@@ -52,6 +53,20 @@ export function useFilters(items, includeSystemAssets) {
     }
   }, [tagSelect.value]);
 
+  useEffect(() => {
+    const enterHandler = (event) => {
+      if (event.key === "Enter") {
+        filterItems();
+      }
+    };
+
+    searchInputRef.current?.addEventListener("keypress", enterHandler);
+
+    return () => {
+      searchInputRef.current?.removeEventListener("keypress", enterHandler);
+    };
+  }, [filterItems]);
+
   if (!Array.isArray(filtered)) {
     throw new Error("items for useFilters must be an array");
   }
@@ -61,8 +76,13 @@ export function useFilters(items, includeSystemAssets) {
     filterControls: {
       tags,
       tagSelect,
-      searchInput,
       searchButton: submitButton,
+      searchInput: {
+        ...searchInput,
+        inputProps: {
+          ref: searchInputRef,
+        },
+      },
     },
   };
 }

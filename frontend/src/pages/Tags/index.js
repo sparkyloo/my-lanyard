@@ -37,7 +37,7 @@ export function TagsPage({ showSystemAssets }) {
   return (
     <PageContent>
       <TopBar showSystemAssets={showSystemAssets}>
-        <Filters {...filterControls} />
+        <Filters hideTagSelect {...filterControls} />
         <FlexRow gap={1}>
           {!!session && <Button onClick={newFlow.toggle}>Create New</Button>}
           <InfoModal flow={infoFlow}>
@@ -52,18 +52,22 @@ export function TagsPage({ showSystemAssets }) {
           </InfoModal>
         </FlexRow>
       </TopBar>
-      <TagGrid
-        allowEdits
-        items={items}
-        // selected={selected}
-        // selectItem={selectItem}
-        // deselectItem={deselectItem}
-        selectItemForEdit={selectItemForEdit}
-      />
+      {!items.length ? (
+        <P>You don't have any tags yet, use the button above to create one.</P>
+      ) : (
+        <TagGrid
+          allowEdits
+          items={items}
+          // selected={selected}
+          // selectItem={selectItem}
+          // deselectItem={deselectItem}
+          selectItemForEdit={selectItemForEdit}
+        />
+      )}
       <Modal {...newFlow}>
         {!!newFlow.show && (
           <CreateNewTag
-            close={newFlow.toggle}
+            modalState={newFlow}
             showSystemAssets={showSystemAssets}
           />
         )}
@@ -72,7 +76,7 @@ export function TagsPage({ showSystemAssets }) {
         {!!selectedForEdit && (
           <EditTag
             id={selectedForEdit}
-            close={editFlow.toggle}
+            modalState={editFlow}
             showSystemAssets={showSystemAssets}
           />
         )}
@@ -147,18 +151,22 @@ export function TagGrid({
   );
 }
 
-function CreateNewTag({ close }) {
+function CreateNewTag({ modalState }) {
   const { errorList, isPending, nameInput, submitButton, dismissError } =
-    useTagCreationForm(close);
+    useTagCreationForm(modalState);
 
   return (
     <FlexCol minWidth={40} gap={2}>
       <FlexRow justify="between">
         <H2>Create Tag</H2>
-        <Button onClick={() => close()}>Close</Button>
+        <Button onClick={modalState.toggle}>Close</Button>
       </FlexRow>
       <Input label="Name" disabled={isPending} {...nameInput} />
-      <Button {...submitButton} disabled={isPending || !nameInput.value}>
+      <Button
+        handleEnterKey={modalState.show}
+        {...submitButton}
+        disabled={isPending || !nameInput.value}
+      >
         Save
       </Button>
       <ErrorList errors={errorList} dismissError={dismissError} />
@@ -166,7 +174,7 @@ function CreateNewTag({ close }) {
   );
 }
 
-function EditTag({ id, close }) {
+function EditTag({ id, modalState }) {
   const {
     errorList,
     isPending,
@@ -174,19 +182,23 @@ function EditTag({ id, close }) {
     deleteButton,
     nameInput,
     dismissError,
-  } = useTagEditForm(id, close);
+  } = useTagEditForm(id, modalState);
 
   return (
     <FlexCol minWidth={40} gap={2}>
       <FlexRow justify="between">
         <H2>Edit Tag</H2>
-        <Button onClick={() => close()}>Close</Button>
+        <Button onClick={modalState.toggle}>Close</Button>
       </FlexRow>
       <Input label="Name" disabled={isPending} {...nameInput} />
-      <Button {...saveButton} disabled={isPending}>
+      <Button
+        handleEnterKey={modalState.show}
+        {...saveButton}
+        disabled={isPending}
+      >
         Save
       </Button>
-      <Button {...deleteButton} disabled={isPending}>
+      <Button variant="secondary" {...deleteButton} disabled={isPending}>
         Delete
       </Button>
       <ErrorList errors={errorList} dismissError={dismissError} />

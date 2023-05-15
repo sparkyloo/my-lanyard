@@ -18,6 +18,9 @@ import { ErrorList } from "../../components/ErrorList";
 import { PageContent } from "../../components/PageContent";
 import { IconGrid } from "../Icons";
 import { EditTagging } from "../Tags";
+import { useSelector } from "react-redux";
+import { doPersonalTagsExist } from "../../store/reducers/tags";
+import { useMemo } from "react";
 
 export function CardsPage({ showSystemAssets }) {
   const {
@@ -63,6 +66,7 @@ export function CardsPage({ showSystemAssets }) {
         selectItem={selectItem}
         deselectItem={deselectItem}
         selectItemForEdit={selectItemForEdit}
+        emptyMessage="Start creating your first card with the button above."
       />
       <Modal {...newFlow}>
         <CreateNewCard
@@ -93,23 +97,36 @@ export function CardGrid({
   selectItemForEdit,
   allowEdits,
   allowTagging,
+  includeCards = () => true,
+  emptyMessage = "",
   ...props
 }) {
   const { session } = useSession();
+  const hasPersonalTags = useSelector(doPersonalTagsExist);
 
   allowEdits = !!session && !!allowEdits;
   allowTagging = !!session && !!allowTagging;
 
+  const cards = useMemo(() => {
+    return items.filter(includeCards);
+  }, [items, includeCards]);
+
+  if (!cards.length) {
+    return <P>{emptyMessage}</P>;
+  }
+
   return (
     <Grid col={col} colGap={colGap} rowGap={rowGap} {...props}>
-      {items.map(({ id, text, icon }) => {
+      {cards.map(({ id, authorId, text, icon }) => {
         const isSelected = selected.includes(`${id}`);
+        const isMine = authorId !== -1;
+        const noMouseEvents = !session || (!isMine && !hasPersonalTags);
 
         return (
           <Button
             key={id}
             rounded
-            noMouseEvents={!session}
+            noMouseEvents={noMouseEvents}
             variant="plain"
             display="flex"
             direction="column"
@@ -197,8 +214,12 @@ function CreateNewCard({ showSystemAssets, modalState }) {
         selectItem={iconList.selectItem}
         deselectItem={iconList.deselectItem}
       />
-      <EditTagging tagList={tagList} />
-      <Button {...submitButton} disabled={isPending}>
+      {!!tagList.items.length && <EditTagging tagList={tagList} />}
+      <Button
+        handleEnterKey={modalState.show}
+        {...submitButton}
+        disabled={isPending}
+      >
         Save
       </Button>
       <ErrorList errors={errorList} dismissError={dismissError} />
@@ -232,7 +253,6 @@ function EditCard({ id, authorId, showSystemAssets, modalState }) {
             <Button onClick={modalState.toggle}>Close</Button>
           </FlexRow>
           <Input label="Text" disabled={isPending} {...textInput} />
-          <ErrorList errors={errorList} dismissError={dismissError} />
           <Filters {...iconList.filterControls} />
           <IconGrid
             rounded
@@ -256,20 +276,33 @@ function EditCard({ id, authorId, showSystemAssets, modalState }) {
           />
         </>
       )}
-      <EditTagging
-        tagList={tagList}
-        closeButton={!!isMine ? null : closeButton}
-      />
+      {!!tagList.items.length && (
+        <EditTagging
+          tagList={tagList}
+          closeButton={!!isMine ? null : closeButton}
+        />
+      )}
       <FlexRow gap={2}>
-        <Button flex={1} {...saveButton} disabled={isPending}>
+        <Button
+          handleEnterKey={modalState.show}
+          flex={1}
+          {...saveButton}
+          disabled={isPending}
+        >
           Save
         </Button>
         {!!isMine && (
-          <Button flex={1} {...deleteButton} disabled={isPending}>
+          <Button
+            variant="secondary"
+            flex={1}
+            {...deleteButton}
+            disabled={isPending}
+          >
             Delete
           </Button>
         )}
       </FlexRow>
+      <ErrorList errors={errorList} dismissError={dismissError} />
     </FlexCol>
   );
 }

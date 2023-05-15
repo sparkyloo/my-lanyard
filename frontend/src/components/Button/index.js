@@ -1,9 +1,15 @@
 import "./Button.css";
 import { NavLink } from "react-router-dom";
 import { prepareStyles } from "../../css/classname";
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 
-export function Button({ variant, noMouseEvents, href, ...props }) {
+export function Button({
+  href,
+  variant,
+  noMouseEvents,
+  handleEnterKey,
+  ...props
+}) {
   const config = {};
 
   switch (variant) {
@@ -79,6 +85,25 @@ export function Button({ variant, noMouseEvents, href, ...props }) {
     },
     [noMouseEvents, onClick]
   );
+
+  const enterHandler = useCallback(
+    (event) => {
+      if (event.key === "Enter") {
+        clickHandler(event);
+      }
+    },
+    [clickHandler]
+  );
+
+  useEffect(() => {
+    if (handleEnterKey) {
+      window.addEventListener("keypress", enterHandler);
+
+      return () => {
+        window.removeEventListener("keypress", enterHandler);
+      };
+    }
+  }, [handleEnterKey, enterHandler]);
 
   return !!href ? (
     <NavLink

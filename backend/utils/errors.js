@@ -11,4 +11,8 @@ module.exports = {
     statusCode: 404,
     message: `${name} was not be found`,
   }),
+  conflict: (email) => ({
+    statusCode: 409,
+    message: `${email} already in use.`,
+  }),
 };

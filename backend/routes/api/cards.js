@@ -1,5 +1,5 @@
 const express = require("express");
-const { Card } = require("../../db/models");
+const { Card, Icon } = require("../../db/models");
 const { requireAuth, restoreUser } = require("../../utils/auth");
 const { includeTaggings, addTaggingRoutes } = require("../../utils/tagging");
 const { notAllowed, notFound } = require("../../utils/errors");
@@ -10,10 +10,22 @@ const {
   finishGetRequest,
   finishPatchRequest,
   finishDeleteRequest,
+  createRequiredCheck,
+  validateRequest,
 } = require("../../utils/validation");
 const { maybeGetIcon } = require("./icons");
 
-const includeIconAndTagging = ["icon", includeTaggings];
+const includeIconAndTagging = (authorId) => [
+  {
+    as: "icon",
+    model: Icon,
+    where: {
+      authorId: byUserOrSystem(authorId),
+    },
+    include: includeTaggings(authorId),
+  },
+  includeTaggings(authorId),
+];
 
 const router = express.Router();
 
@@ -67,8 +79,14 @@ function getCardValues({ body }) {
     values.text = body.text;
   }
 
+  if ("iconId" in body) {
+    values.iconId = body.iconId;
+  }
+
   return values;
 }
+
+const checkIconIdExists = createRequiredCheck("Icon", (body) => body.iconId);
 
 /**
  * create
@@ -77,16 +95,18 @@ router.post("/", async (req, res) => {
   try {
     const user = await requireAuth(req, res);
 
-    await maybeGetIcon(req.body.iconId, user.id);
+    const { text, iconId } = await validateRequest(req, [checkIconIdExists]);
+
+    await maybeGetIcon(iconId, user.id);
 
     const instance = await Card.create({
-      text: req.body.text,
-      iconId: req.body.iconId,
+      text,
+      iconId,
       authorId: user.id,
     });
 
     await instance.reload({
-      include: includeIconAndTagging,
+      include: includeIconAndTagging(user.id),
     });
 
     finishPostRequest(res, instance);
@@ -108,7 +128,7 @@ router.get("/", async (req, res) => {
         where: {
           authorId: byUserOrSystem(user?.id),
         },
-        include: includeIconAndTagging,
+        include: includeIconAndTagging(user?.id),
       })
     );
   } catch (caught) {
@@ -120,8 +140,8 @@ router.get("/instance/:id", async (req, res) => {
   try {
     const user = await requireAuth(req, res);
 
-    const instance = await maybeGetCard(req.params.id, user.id, {
-      include: includeIconAndTagging,
+    const instance = await maybeGetCard(req.params.id, user?.id, {
+      include: includeIconAndTagging(user?.id),
     });
 
     finishGetRequest(res, instance);
@@ -138,7 +158,7 @@ router.patch("/instance/:id", async (req, res) => {
     const user = await requireAuth(req, res);
 
     const instance = await maybeGetCard(req.params.id, user.id, {
-      include: includeIconAndTagging,
+      include: includeIconAndTagging(user.id),
     });
 
     await instance.update(getCardValues(req));
