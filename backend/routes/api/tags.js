@@ -1,7 +1,7 @@
 const express = require("express");
 const { Tag } = require("../../db/models");
 const { requireAuth, restoreUser } = require("../../utils/auth");
-const { notAllowed, notFound } = require("../../utils/errors");
+const { notAllowed, notFound, conflict } = require("../../utils/errors");
 const { userCanViewItem, byUserOrSystem, inList } = require("../../utils/misc");
 const {
   createRequiredCheck,
@@ -76,6 +76,17 @@ router.post("/", async (req, res) => {
     const user = await requireAuth(req, res);
 
     const { name } = await validateRequest(req, [checkTagNameExists]);
+
+    const existing = await Tag.findOne({
+      where: {
+        name,
+        authorId: user.id,
+      },
+    });
+
+    if (existing) {
+      throw conflict(name);
+    }
 
     finishPostRequest(
       res,

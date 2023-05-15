@@ -13,6 +13,6 @@ module.exports = {
   }),
   conflict: (email) => ({
     statusCode: 409,
-    message: `${email} already in use.`,
+    message: `${email} already exists.`,
   }),
 };
