@@ -40,6 +40,14 @@ export function CardsPage({ showSystemAssets }) {
 
   const { session } = useSession();
 
+  const emptyMessage = useMemo(() => {
+    if (filterControls.searchInput.value || filterControls.tagSelect.value) {
+      return "No items could be found with the current filters.";
+    } else {
+      return "Start creating your first card with the button above.";
+    }
+  }, []);
+
   return (
     <PageContent>
       <TopBar showSystemAssets={showSystemAssets}>
@@ -66,7 +74,7 @@ export function CardsPage({ showSystemAssets }) {
         selectItem={selectItem}
         deselectItem={deselectItem}
         selectItemForEdit={selectItemForEdit}
-        emptyMessage="Start creating your first card with the button above."
+        emptyMessage={emptyMessage}
       />
       <Modal {...newFlow}>
         <CreateNewCard
@@ -95,6 +103,7 @@ export function CardGrid({
   selectItem,
   deselectItem,
   selectItemForEdit,
+  allowClicks,
   allowEdits,
   allowTagging,
   includeCards = () => true,
@@ -120,7 +129,8 @@ export function CardGrid({
       {cards.map(({ id, authorId, text, icon }) => {
         const isSelected = selected.includes(`${id}`);
         const isMine = authorId !== -1;
-        const noMouseEvents = !session || (!isMine && !hasPersonalTags);
+        const noMouseEvents =
+          !session || (!isMine && !hasPersonalTags && !allowClicks);
 
         return (
           <Button
@@ -186,8 +196,12 @@ function CreateNewCard({ showSystemAssets, modalState }) {
     dismissError,
   } = useCardCreationForm(showSystemAssets.checked, modalState);
 
+  const disabledSave = useMemo(() => {
+    return isPending || !iconList?.selected?.length;
+  }, [isPending, iconList.selected]);
+
   return (
-    <FlexCol minWidth={40} gap={2}>
+    <FlexCol minWidth={64} maxWidth={64} gap={2}>
       <FlexRow justify="between">
         <H2>Create Card</H2>
         <Button onClick={modalState.toggle}>Close</Button>
@@ -196,6 +210,7 @@ function CreateNewCard({ showSystemAssets, modalState }) {
       <Filters {...iconList.filterControls} />
       <IconGrid
         rounded
+        allowClicks
         scroll="y"
         maxHeight={24}
         col={4}
@@ -215,11 +230,7 @@ function CreateNewCard({ showSystemAssets, modalState }) {
         deselectItem={iconList.deselectItem}
       />
       {!!tagList.items.length && <EditTagging tagList={tagList} />}
-      <Button
-        handleEnterKey={modalState.show}
-        {...submitButton}
-        disabled={isPending}
-      >
+      <Button {...submitButton} disabled={disabledSave}>
         Save
       </Button>
       <ErrorList errors={errorList} dismissError={dismissError} />
@@ -244,8 +255,12 @@ function EditCard({ id, authorId, showSystemAssets, modalState }) {
   const isMine = session?.id === authorId;
   const closeButton = <Button onClick={modalState.toggle}>Close</Button>;
 
+  const disabledSave = useMemo(() => {
+    return isPending || !iconList?.selected?.length;
+  }, [isPending, iconList.selected]);
+
   return (
-    <FlexCol minWidth={40} gap={2}>
+    <FlexCol minWidth={64} maxWidth={64} gap={2}>
       {!!isMine && (
         <>
           <FlexRow justify="between">
@@ -256,6 +271,7 @@ function EditCard({ id, authorId, showSystemAssets, modalState }) {
           <Filters {...iconList.filterControls} />
           <IconGrid
             rounded
+            allowClicks
             scroll="y"
             maxHeight={24}
             col={4}
@@ -283,12 +299,7 @@ function EditCard({ id, authorId, showSystemAssets, modalState }) {
         />
       )}
       <FlexRow gap={2}>
-        <Button
-          handleEnterKey={modalState.show}
-          flex={1}
-          {...saveButton}
-          disabled={isPending}
-        >
+        <Button flex={1} {...saveButton} disabled={disabledSave}>
           Save
         </Button>
         {!!isMine && (

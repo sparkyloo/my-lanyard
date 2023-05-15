@@ -188,7 +188,10 @@ router.patch("/instance/:id", async (req, res) => {
   try {
     const user = await requireAuth(req, res);
 
-    const { cardIds } = await validateRequest(req, [checkLanyardCardIdsExists]);
+    const { cardIds } = await validateRequest(req, [
+      checkLanyardNameExists,
+      checkLanyardCardIdsExists,
+    ]);
 
     const instance = await maybeGetLanyard(req.params.id, user.id, {
       include: includeCardsAndTaggings(user.id),

@@ -19,6 +19,7 @@ import { PageContent } from "../../components/PageContent";
 import { EditTagging } from "../Tags";
 import { useSelector } from "react-redux";
 import { doPersonalTagsExist } from "../../store/reducers/tags";
+import { useMemo } from "react";
 
 export function IconsPage({ showSystemAssets }) {
   const {
@@ -37,6 +38,14 @@ export function IconsPage({ showSystemAssets }) {
   } = useIconList(showSystemAssets.checked);
 
   const { session } = useSession();
+
+  const emptyMessage = useMemo(() => {
+    if (filterControls.searchInput.value || filterControls.tagSelect.value) {
+      return "No items could be found with the current filters.";
+    } else {
+      return "Start creating your first icon with the button above.";
+    }
+  }, []);
 
   return (
     <PageContent>
@@ -67,6 +76,7 @@ export function IconsPage({ showSystemAssets }) {
         selectItem={selectItem}
         deselectItem={deselectItem}
         selectItemForEdit={selectItemForEdit}
+        emptyMessage={emptyMessage}
       />
       <Modal {...newFlow}>
         <CreateNewIcon
@@ -94,8 +104,10 @@ export function IconGrid({
   selectItem,
   deselectItem,
   selectItemForEdit,
+  allowClicks,
   allowEdits,
   allowTagging,
+  emptyMessage,
   ...props
 }) {
   const { session } = useSession();
@@ -104,12 +116,17 @@ export function IconGrid({
   allowEdits = !!session && !!allowEdits;
   allowTagging = !!session && !!allowTagging;
 
+  if (!items.length) {
+    return <P>{emptyMessage}</P>;
+  }
+
   return (
     <Grid col={col} colGap={colGap} rowGap={rowGap} {...props}>
       {items.map(({ id, authorId, name, imageUrl }) => {
         const isSelected = selected.includes(`${id}`);
         const isMine = authorId !== -1;
-        const noMouseEvents = !session || (!isMine && !hasPersonalTags);
+        const noMouseEvents =
+          !session || (!isMine && !hasPersonalTags && !allowClicks);
 
         return (
           <Button
@@ -166,7 +183,7 @@ function CreateNewIcon({ modalState }) {
   } = useIconCreationForm(modalState);
 
   return (
-    <FlexCol minWidth={40} gap={2}>
+    <FlexCol minWidth={64} maxWidth={64} gap={2}>
       <FlexRow justify="between">
         <H2>Create Icon</H2>
         <Button onClick={modalState.toggle}>Close</Button>
@@ -174,11 +191,7 @@ function CreateNewIcon({ modalState }) {
       <Input label="Name" disabled={isPending} {...nameInput} />
       <Input label="Image Url" disabled={isPending} {...imageUrlInput} />
       {!!tagList.items.length && <EditTagging tagList={tagList} />}
-      <Button
-        handleEnterKey={modalState.show}
-        {...submitButton}
-        disabled={isPending}
-      >
+      <Button {...submitButton} disabled={isPending}>
         Save
       </Button>
       <ErrorList errors={errorList} dismissError={dismissError} />
@@ -204,7 +217,7 @@ function EditIcon({ id, authorId, modalState }) {
   const closeButton = <Button onClick={modalState.toggle}>Close</Button>;
 
   return (
-    <FlexCol minWidth={40} gap={2}>
+    <FlexCol minWidth={64} maxWidth={64} gap={2}>
       {!!isMine && (
         <>
           <FlexRow justify="between">
@@ -222,12 +235,7 @@ function EditIcon({ id, authorId, modalState }) {
         />
       )}
       <FlexRow gap={2}>
-        <Button
-          handleEnterKey={modalState.show}
-          flex={1}
-          {...saveButton}
-          disabled={isPending}
-        >
+        <Button flex={1} {...saveButton} disabled={isPending}>
           Save
         </Button>
         {!!isMine && (

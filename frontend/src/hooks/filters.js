@@ -16,7 +16,7 @@ export function useFilters(items, includeSystemAssets) {
   const filterItems = useCallback(() => {
     setFavorFiltered(true);
     setFiltered(
-      items.filter(({ name, taggings = [] }) => {
+      items.filter(({ name = "", taggings = [] }) => {
         if (searchInput.value) {
           if (name.includes(searchInput.value)) {
             return true;

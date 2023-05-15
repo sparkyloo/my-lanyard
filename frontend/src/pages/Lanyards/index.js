@@ -20,7 +20,7 @@ import { CardGrid } from "../Cards";
 import { EditTagging } from "../Tags";
 import { useSelector } from "react-redux";
 import { doPersonalTagsExist } from "../../store/reducers/tags";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 
 export function LanyardsPage({ showSystemAssets }) {
   const {
@@ -39,6 +39,14 @@ export function LanyardsPage({ showSystemAssets }) {
   } = useLanyardList(showSystemAssets.checked);
 
   const { session } = useSession();
+
+  const emptyMessage = useMemo(() => {
+    if (filterControls.searchInput.value || filterControls.tagSelect.value) {
+      return "No items could be found with the current filters.";
+    } else {
+      return "Start creating your first lanyard with the button above.";
+    }
+  }, []);
 
   return (
     <PageContent>
@@ -69,6 +77,7 @@ export function LanyardsPage({ showSystemAssets }) {
         selectItem={selectItem}
         deselectItem={deselectItem}
         selectItemForEdit={selectItemForEdit}
+        emptyMessage={emptyMessage}
       />
       <Modal {...newFlow}>
         <CreateNewLanyard
@@ -99,6 +108,7 @@ export function LanyardGrid({
   selectItemForEdit,
   allowEdits,
   allowTagging,
+  emptyMessage,
   ...props
 }) {
   const { session } = useSession();
@@ -106,6 +116,10 @@ export function LanyardGrid({
 
   allowEdits = !!session && !!allowEdits;
   allowTagging = !!session && !!allowTagging;
+
+  if (!items.length) {
+    return <P>{emptyMessage}</P>;
+  }
 
   return (
     <Grid col={col} colGap={colGap} rowGap={rowGap} {...props}>
@@ -198,8 +212,26 @@ function CreateNewLanyard({ showSystemAssets, modalState }) {
     return card.lanyardId === null;
   }, []);
 
+  const emptyMessage = useMemo(() => {
+    if (
+      cardList.filterControls.searchInput.value ||
+      cardList.filterControls.tagSelect.value
+    ) {
+      return "No items could be found with the current filters.";
+    } else {
+      return "Cards are assigned to exactly one lanyard at a time. Create a new one on the cards page.";
+    }
+  }, [
+    cardList.filterControls.searchInput.value,
+    cardList.filterControls.tagSelect.value,
+  ]);
+
+  const disabledSave = useMemo(() => {
+    return isPending || !cardList?.selected?.length;
+  }, [isPending, cardList.selected]);
+
   return (
-    <FlexCol minWidth={40} gap={2}>
+    <FlexCol minWidth={64} maxWidth={64} gap={2}>
       <FlexRow justify="between">
         <H2>Create Lanyard</H2>
         <Button onClick={modalState.toggle}>Close</Button>
@@ -209,6 +241,7 @@ function CreateNewLanyard({ showSystemAssets, modalState }) {
       <Filters {...cardList.filterControls} />
       <CardGrid
         rounded
+        allowClicks
         scroll="y"
         maxHeight={24}
         col={4}
@@ -227,14 +260,10 @@ function CreateNewLanyard({ showSystemAssets, modalState }) {
         selectItem={cardList.selectItem}
         deselectItem={cardList.deselectItem}
         includeCards={cardsToShow}
-        emptyMessage="Cards are assigned to exactly one lanyard at a time. Create a new one on the cards page."
+        emptyMessage={emptyMessage}
       />
       {!!tagList.items.length && <EditTagging tagList={tagList} />}
-      <Button
-        handleEnterKey={modalState.show}
-        {...submitButton}
-        disabled={isPending}
-      >
+      <Button {...submitButton} disabled={disabledSave}>
         Save
       </Button>
       <ErrorList errors={errorList} dismissError={dismissError} />
@@ -267,8 +296,26 @@ function EditLanyard({ id, authorId, showSystemAssets, modalState }) {
     [id]
   );
 
+  const emptyMessage = useMemo(() => {
+    if (
+      cardList.filterControls.searchInput.value ||
+      cardList.filterControls.tagSelect.value
+    ) {
+      return "No items could be found with the current filters.";
+    } else {
+      return "Cards are assigned to exactly one lanyard at a time. Create a new one on the cards page.";
+    }
+  }, [
+    cardList.filterControls.searchInput.value,
+    cardList.filterControls.tagSelect.value,
+  ]);
+
+  const disabledSave = useMemo(() => {
+    return isPending || !cardList?.selected?.length;
+  }, [isPending, cardList.selected]);
+
   return (
-    <FlexCol minWidth={40} gap={2}>
+    <FlexCol minWidth={64} maxWidth={64} gap={2}>
       {!!isMine && (
         <>
           <FlexRow justify="between">
@@ -284,6 +331,7 @@ function EditLanyard({ id, authorId, showSystemAssets, modalState }) {
           <Filters {...cardList.filterControls} />
           <CardGrid
             rounded
+            allowClicks
             scroll="y"
             maxHeight={24}
             col={4}
@@ -302,7 +350,7 @@ function EditLanyard({ id, authorId, showSystemAssets, modalState }) {
             selectItem={cardList.selectItem}
             deselectItem={cardList.deselectItem}
             includeCards={cardsToShow}
-            emptyMessage="Cards are assigned to exactly one lanyard at a time. Create a new one on the cards page."
+            emptyMessage={emptyMessage}
           />
           <ErrorList errors={errorList} dismissError={dismissError} />
         </>
@@ -314,12 +362,7 @@ function EditLanyard({ id, authorId, showSystemAssets, modalState }) {
         />
       )}
       <FlexRow gap={2}>
-        <Button
-          handleEnterKey={modalState.show}
-          flex={1}
-          {...saveButton}
-          disabled={isPending}
-        >
+        <Button flex={1} {...saveButton} disabled={disabledSave}>
           Save
         </Button>
         {!!isMine && (
