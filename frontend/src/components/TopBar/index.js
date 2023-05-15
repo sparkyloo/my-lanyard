@@ -98,7 +98,7 @@ export function TopBar({ showSystemAssets, children }) {
               checked={showSystemAssets.checked}
               onChange={showSystemAssets.onChange}
             >
-              show system assets
+              show premade items
             </Checkbox>
           )}
         </FlexRow>
@@ -150,17 +150,35 @@ export function TopBar({ showSystemAssets, children }) {
 export function Filters({
   hideTagSelect,
   tags,
+  sortedTags,
   tagSelect,
   searchInput,
   searchButton,
 }) {
+  const tagOptions = useMemo(() => {
+    const { mine, system } = sortedTags;
+
+    if (!mine.length) {
+      return system;
+    }
+
+    if (!system.length) {
+      return mine;
+    }
+
+    return [
+      ["Personal", mine],
+      ["Premade", system],
+    ];
+  }, [sortedTags]);
+
   return (
-    <FlexRow gap={0.5}>
+    <FlexRow gap={0.5} align="center">
       <Button {...searchButton}>Search</Button>
       <Input placeholder="By name" {...searchInput} />
       {!hideTagSelect && (
         <DropDown
-          options={tags}
+          options={tagOptions}
           placeholder="all tags"
           width={12}
           {...tagSelect}

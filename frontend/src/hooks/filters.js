@@ -7,6 +7,31 @@ import { useForm } from "./form";
 export function useFilters(items, includeSystemAssets) {
   const tags = useSelector(getItems(includeSystemAssets));
 
+  const sortedTags = useMemo(() => {
+    const mine = [];
+    const system = [];
+
+    for (const tag of tags) {
+      if (tag.authorId === -1) {
+        system.push(tag);
+      } else {
+        mine.push(tag);
+      }
+    }
+
+    mine.sort((a, b) =>
+      a.name.toLowerCase().localeCompare(b.name.toLowerCase())
+    );
+    system.sort((a, b) =>
+      a.name.toLowerCase().localeCompare(b.name.toLowerCase())
+    );
+
+    return {
+      mine,
+      system,
+    };
+  }, [tags]);
+
   const [favorFiltered, setFavorFiltered] = useState(false);
   const [filtered, setFiltered] = useState(items);
   const tagSelect = useInput("");
@@ -82,6 +107,7 @@ export function useFilters(items, includeSystemAssets) {
     filtered: favorFiltered ? filtered : items,
     filterControls: {
       tags,
+      sortedTags,
       tagSelect,
       isDirty,
       searchButton: submitButton,

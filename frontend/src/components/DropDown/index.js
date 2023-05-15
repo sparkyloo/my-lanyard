@@ -58,11 +58,28 @@ export function DropDown({ ...props }) {
         {...prepareStyles(inputProps)}
       >
         {!!placeholder && <option value="">{placeholder}</option>}
-        {options.map(({ id, name }, i) => (
-          <option key={i} value={id}>
-            {name}
-          </option>
-        ))}
+        {options.map((item, i) => {
+          if (Array.isArray(item)) {
+            const [groupName, groupOptions] = item;
+            return (
+              <optgroup key={i} label={groupName}>
+                {groupOptions.map(({ id, name }, j) => (
+                  <option key={j} value={id}>
+                    {name}
+                  </option>
+                ))}
+              </optgroup>
+            );
+          } else {
+            const { id, name } = item;
+
+            return (
+              <option key={i} value={id}>
+                {name}
+              </option>
+            );
+          }
+        })}
       </select>
     </div>
   );

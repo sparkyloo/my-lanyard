@@ -35,7 +35,7 @@ module.exports = {
 
     const colorTag = await Tag.create({
       authorId: admin.id,
-      name: "color",
+      name: "colors",
     });
 
     const colorIcons = await Icon.bulkCreate(
@@ -73,7 +73,7 @@ module.exports = {
 
     const emotionTag = await Tag.create({
       authorId: admin.id,
-      name: "emotion",
+      name: "emotions",
     });
 
     const emotionIcons = await Icon.bulkCreate(
@@ -163,17 +163,17 @@ module.exports = {
 
     const foodTag = await Tag.create({
       authorId: admin.id,
-      name: "food",
+      name: "foods",
     });
 
     const fruitTag = await Tag.create({
       authorId: admin.id,
-      name: "fruit",
+      name: "fruits",
     });
 
     const drinkTag = await Tag.create({
       authorId: admin.id,
-      name: "drink",
+      name: "drinks",
     });
 
     const foodIcons = await Icon.bulkCreate(
@@ -360,7 +360,7 @@ module.exports = {
 
     const otherTag = await Tag.create({
       authorId: admin.id,
-      name: "other",
+      name: "others",
     });
 
     const otherIcons = await Icon.bulkCreate(
